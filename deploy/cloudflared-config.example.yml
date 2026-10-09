@@ -1,0 +1,11 @@
+# Cloudflare Tunnel — copie para C:\Users\SEU_USUARIO\.cloudflared\config.yml e ajuste.
+# O servidor do chat serve o site, a API e o WebSocket na MESMA porta (3001),
+# então basta apontar um único endereço para ela.
+tunnel: chat
+credentials-file: C:\Users\SEU_USUARIO\.cloudflared\ID-DO-TUNEL.json
+
+ingress:
+  - hostname: chat.seudominio.com.br
+    service: http://localhost:3001
+  # Regra final obrigatória: qualquer outro endereço recebe 404.
+  - service: http_status:404

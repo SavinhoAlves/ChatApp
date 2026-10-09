@@ -1,0 +1,5 @@
+# Repositório sempre com LF (o servidor de produção é Linux); o Git converte no Windows se preciso.
+* text=auto eol=lf
+*.png binary
+*.jpg binary
+*.ico binary

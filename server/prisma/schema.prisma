@@ -1,0 +1,314 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum ConversationType {
+  DIRECT
+  GROUP
+}
+
+enum ParticipantRole {
+  ADMIN
+  MEMBER
+}
+
+enum AttachmentType {
+  IMAGE
+  VIDEO
+  AUDIO
+  FILE
+  LOCATION
+  CONTACT
+  STICKER
+}
+
+model User {
+  id           String   @id @default(cuid())
+  username     String   @unique
+  displayName  String
+  // Foto de perfil (caminho em /uploads). Opcional.
+  avatarUrl    String?
+  // Conta comercial (como o WhatsApp Business): mostra o selo e o perfil da empresa.
+  isBusiness   Boolean  @default(false)
+  // Número em formato E.164 (+5511999999999). Identidade principal; contas antigas podem não ter.
+  phone        String?  @unique
+  // Contas criadas por telefone não têm senha.
+  passwordHash String?
+  createdAt    DateTime @default(now())
+  lastSeenAt   DateTime @default(now())
+
+  participations Participant[]
+  messages       Message[]
+  contacts       Contact[]        @relation("ContactsOwned")
+  contactOf      Contact[]        @relation("ContactsOf")
+  receipts       MessageReceipt[]
+  blocked        Block[]          @relation("Blocker")
+  blockedBy      Block[]          @relation("Blocked")
+  sessions       Session[]
+  business       BusinessProfile?
+  phoneContacts  PhoneContact[]
+  chatLists      ChatList[]
+  reportsMade    Report[]         @relation("ReportsMade")
+  reportsAgainst Report[]         @relation("ReportsAgainst")
+}
+
+model Conversation {
+  id               String           @id @default(cuid())
+  type             ConversationType
+  title            String?
+  // Para conversas 1:1: ids dos dois usuários ordenados e unidos por ":".
+  // Garante que só exista uma conversa direta entre o mesmo par.
+  directKey        String?          @unique
+  createdAt        DateTime         @default(now())
+  lastMessageAt    DateTime         @default(now())
+  // Mensagens temporárias: novas mensagens somem para todos depois deste tempo (null = desativado).
+  disappearSeconds Int?
+
+  participants Participant[]
+  messages     Message[]
+  listItems    ChatListItem[]
+  callLinks    CallLink[]
+
+  @@index([lastMessageAt])
+}
+
+model Participant {
+  id             String          @id @default(cuid())
+  conversationId String
+  userId         String
+  role           ParticipantRole @default(MEMBER)
+  joinedAt       DateTime        @default(now())
+
+  // Preferências pessoais sobre esta conversa — só afetam quem configurou, igual no WhatsApp.
+  archivedAt   DateTime? // arquivada: some da lista principal
+  mutedUntil   DateTime? // notificações silenciadas até este horário (null = nunca silenciado)
+  pinnedAt     DateTime? // fixada no topo da lista; quem fixou por último fica em cima
+  favoritedAt  DateTime? // marcada como favorita
+  forcedUnread Boolean   @default(false) // "Marcar como não lida" até abrir a conversa de novo
+  clearedAt    DateTime? // "Limpar conversa": esconde mensagens de antes deste horário (só para quem limpou)
+  hiddenAt     DateTime? // "Apagar conversa" (1:1): some da lista; volta a aparecer com mensagem nova
+
+  conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([conversationId, userId])
+  @@index([userId])
+}
+
+model Message {
+  id             String    @id @default(cuid())
+  conversationId String
+  senderId       String
+  body           String
+  replyToId      String?
+  createdAt      DateTime  @default(now())
+  editedAt       DateTime?
+  deletedAt      DateTime?
+  // Mensagem temporária: o servidor apaga para todos quando passar deste horário.
+  expiresAt      DateTime?
+
+  // Mídia opcional (imagem, vídeo, áudio ou arquivo). Uma mensagem pode ter só anexo, só texto, ou os dois.
+  attachmentType AttachmentType?
+  attachmentUrl  String?
+  attachmentName String?
+  attachmentMime String?
+  attachmentSize Int?
+
+  // Localização (atual ou ao vivo). liveUntil preenchido = compartilhamento em tempo real até esse horário.
+  latitude  Float?
+  longitude Float?
+  liveUntil DateTime?
+
+  // Contato compartilhado: outro usuário do chat. Nome/usuário guardados na hora do envio.
+  contactUserId   String?
+  contactName     String?
+  contactUsername String?
+
+  conversation Conversation     @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  sender       User             @relation(fields: [senderId], references: [id], onDelete: Cascade)
+  replyTo      Message?         @relation("Replies", fields: [replyToId], references: [id], onDelete: SetNull)
+  replies      Message[]        @relation("Replies")
+  receipts     MessageReceipt[]
+
+  @@index([conversationId, createdAt])
+}
+
+// Uma linha por destinatário de cada mensagem: controla entregue/lido e o contador de não lidas.
+model MessageReceipt {
+  messageId      String
+  userId         String
+  // Desnormalizado para permitir contar não lidas por conversa sem join.
+  conversationId String
+  deliveredAt    DateTime?
+  readAt         DateTime?
+
+  message Message @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([messageId, userId])
+  @@index([userId, conversationId, readAt])
+  @@index([userId, deliveredAt])
+}
+
+// Quem cada pessoa adicionou aos contatos. Só dá para buscar, iniciar conversa, criar grupo
+// ou compartilhar como contato quem está aqui — cadastrar uma conta não torna ninguém visível.
+model Contact {
+  id        String   @id @default(cuid())
+  ownerId   String
+  contactId String
+  // Nome que o dono salvou para essa pessoa (como na agenda). Se vazio, aparece o nome do perfil.
+  firstName String?
+  lastName  String?
+  createdAt DateTime @default(now())
+
+  owner   User @relation("ContactsOwned", fields: [ownerId], references: [id], onDelete: Cascade)
+  contact User @relation("ContactsOf", fields: [contactId], references: [id], onDelete: Cascade)
+
+  @@unique([ownerId, contactId])
+  @@index([ownerId])
+}
+
+// Quem bloqueou quem: a pessoa bloqueada não consegue mais mandar mensagem nem chamar para conversa nova.
+model Block {
+  id        String   @id @default(cuid())
+  blockerId String
+  blockedId String
+  createdAt DateTime @default(now())
+
+  blocker User @relation("Blocker", fields: [blockerId], references: [id], onDelete: Cascade)
+  blocked User @relation("Blocked", fields: [blockedId], references: [id], onDelete: Cascade)
+
+  @@unique([blockerId, blockedId])
+  @@index([blockerId])
+}
+
+// Código SMS de ativação. Guardamos só o hash; vale por poucos minutos e tem limite de tentativas.
+model PhoneVerification {
+  id        String   @id @default(cuid())
+  phone     String
+  codeHash  String
+  attempts  Int      @default(0)
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@index([phone, createdAt])
+}
+
+// Um aparelho/navegador conectado à conta ("dispositivos conectados"). O JWT carrega o id da sessão;
+// revogar a sessão derruba aquele aparelho na hora.
+model Session {
+  id           String    @id @default(cuid())
+  userId       String
+  deviceName   String
+  platform     String // 'mobile' | 'desktop' | 'web'
+  createdAt    DateTime  @default(now())
+  lastActiveAt DateTime  @default(now())
+  revokedAt    DateTime?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+// Pedido de login por QR code: o desktop cria, o celular (já logado) aprova, o desktop recebe a sessão.
+model QrLogin {
+  id         String    @id @default(cuid())
+  secretHash String
+  deviceName String
+  platform   String
+  expiresAt  DateTime
+  userId     String? // preenchido quando o celular aprova
+  claimedAt  DateTime? // preenchido quando o desktop retira a sessão (uso único)
+  createdAt  DateTime  @default(now())
+
+  @@index([expiresAt])
+}
+
+// Denúncia de uma conversa ("Denunciar"). Fica guardada para quem administra o servidor analisar.
+model Report {
+  id             String   @id @default(cuid())
+  reporterId     String
+  reportedUserId String?
+  conversationId String
+  // Últimas mensagens da conversa no momento da denúncia (texto), como no WhatsApp.
+  snapshot       String
+  createdAt      DateTime @default(now())
+
+  reporter     User  @relation("ReportsMade", fields: [reporterId], references: [id], onDelete: Cascade)
+  reportedUser User? @relation("ReportsAgainst", fields: [reportedUserId], references: [id], onDelete: SetNull)
+
+  @@index([createdAt])
+}
+
+// Listas personalizadas de conversas ("Família", "Trabalho"…). Cada pessoa tem as suas.
+model ChatList {
+  id        String   @id @default(cuid())
+  ownerId   String
+  name      String
+  createdAt DateTime @default(now())
+
+  owner User           @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  items ChatListItem[]
+
+  @@unique([ownerId, name])
+  @@index([ownerId])
+}
+
+model ChatListItem {
+  listId         String
+  conversationId String
+  createdAt      DateTime @default(now())
+
+  list         ChatList     @relation(fields: [listId], references: [id], onDelete: Cascade)
+  conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+
+  @@id([listId, conversationId])
+  @@index([conversationId])
+}
+
+// Link de ligação ("Enviar link de ligação"): quem tiver o link e estiver logado pode entrar na chamada.
+model CallLink {
+  id             String   @id @default(cuid())
+  conversationId String?
+  creatorId      String
+  video          Boolean  @default(true)
+  createdAt      DateTime @default(now())
+  expiresAt      DateTime
+
+  conversation Conversation? @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+}
+
+// Perfil da empresa de uma conta comercial (visível para quem conversa com ela).
+model BusinessProfile {
+  userId      String   @id
+  category    String
+  description String?
+  hours       String?
+  address     String?
+  website     String?
+  email       String?
+  updatedAt   DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+// Contato salvo com um número que ainda não usa o Chat (como na agenda do celular).
+// Quando alguém se cadastra com esse número, vira um Contact normal com o nome salvo.
+model PhoneContact {
+  id        String   @id @default(cuid())
+  ownerId   String
+  phone     String
+  firstName String?
+  lastName  String?
+  createdAt DateTime @default(now())
+
+  owner User @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+
+  @@unique([ownerId, phone])
+  @@index([phone])
+}

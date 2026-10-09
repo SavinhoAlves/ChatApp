@@ -1,0 +1,12 @@
+node_modules/
+dist/
+server/uploads/
+.output/
+.nuxt/
+.nitro/
+.cache/
+.env
+*.log
+.DS_Store
+.claude/
+*.tsbuildinfo
