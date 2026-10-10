@@ -69,7 +69,9 @@ export async function authRoutes(app: FastifyInstance) {
     async (request) => {
       const { phone, channel: wanted } = validate(requestCodeSchema, request.body);
       const smsCapable = canReceiveSms(phone);
-      const channel = wanted === 'call' || !smsCapable ? 'call' : 'sms';
+      const { canCall } = config.sms;
+      if (!smsCapable && !canCall) throw new HttpError(400, 'Este número não recebe SMS. Use um celular.');
+      const channel = canCall && (wanted === 'call' || !smsCapable) ? 'call' : 'sms';
       if (!config.registrationOpen && !(await prisma.user.findUnique({ where: { phone }, select: { id: true } }))) {
         throw new HttpError(403, 'Cadastros estão desativados');
       }
@@ -102,7 +104,7 @@ export async function authRoutes(app: FastifyInstance) {
       // Só em desenvolvimento com SMS "console": devolve o código para a tela de login mostrar
       // (facilita cadastrar números de teste). Em produção ou com SMS de verdade, nunca.
       const devCode = !config.isProd && config.sms.provider === 'console' ? code : undefined;
-      return { ok: true, phone, channel, canSms: smsCapable, resendInSeconds: RESEND_COOLDOWN_MS / 1000, devCode };
+      return { ok: true, phone, channel, canSms: smsCapable, canCall, resendInSeconds: RESEND_COOLDOWN_MS / 1000, devCode };
     },
   );
 

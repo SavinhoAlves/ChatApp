@@ -53,6 +53,8 @@ const devCode = ref('');
 // Como o código foi enviado: SMS (celular) ou ligação (fixo, 0800, 400x — ou se a pessoa pedir).
 const channel = ref<'sms' | 'call'>('sms');
 const canSms = ref(true);
+// Com SMS pelo próprio celular (SMS Gate) não há ligação: some o "Me ligue".
+const canCall = ref(true);
 
 const sendCode = (via?: 'sms' | 'call') =>
   run(async () => {
@@ -60,6 +62,7 @@ const sendCode = (via?: 'sms' | 'call') =>
     phone.value = res.phone;
     channel.value = res.channel;
     canSms.value = res.canSms;
+    canCall.value = res.canCall ?? true;
     step.value = 'code';
     devCode.value = res.devCode ?? '';
     code.value = res.devCode ?? '';
@@ -269,7 +272,7 @@ useHead({ title: 'Entrar · Chat' });
           <button class="link-btn" type="button" :disabled="resendIn > 0 || loading" @click="sendCode(channel)">
             {{ resendIn > 0 ? `Reenviar em ${resendIn}s` : channel === 'call' ? 'Ligar de novo' : 'Reenviar SMS' }}
           </button>
-          <button v-if="channel === 'sms'" class="link-btn" type="button" :disabled="resendIn > 0 || loading" @click="sendCode('call')">Me ligue</button>
+          <button v-if="channel === 'sms' && canCall" class="link-btn" type="button" :disabled="resendIn > 0 || loading" @click="sendCode('call')">Me ligue</button>
           <button v-else-if="canSms" class="link-btn" type="button" :disabled="resendIn > 0 || loading" @click="sendCode('sms')">Enviar por SMS</button>
         </div>
       </form>

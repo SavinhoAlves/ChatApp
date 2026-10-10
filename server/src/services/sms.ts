@@ -7,6 +7,25 @@ export async function sendSms(phone: string, text: string) {
     return;
   }
 
+  if (config.sms.provider === 'smsgate') {
+    // O app SMS Gate no seu Android recebe o pedido pela nuvem e envia o SMS pelo chip do aparelho.
+    const { smsgateUrl, smsgateUser, smsgatePass } = config.sms;
+    const res = await fetch(`${smsgateUrl}/messages`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Basic ${Buffer.from(`${smsgateUser}:${smsgatePass}`).toString('base64')}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ textMessage: { text }, phoneNumbers: [phone] }),
+      signal: AbortSignal.timeout(15_000),
+    });
+    if (!res.ok) {
+      console.error('Falha ao enviar SMS (SMS Gate):', res.status, await res.text().catch(() => ''));
+      throw new Error('sms_failed');
+    }
+    return;
+  }
+
   const { twilioSid, twilioToken, twilioFrom } = config.sms;
   const res = await fetch(`https://api.twilio.com/2010-04-01/Accounts/${twilioSid}/Messages.json`, {
     method: 'POST',

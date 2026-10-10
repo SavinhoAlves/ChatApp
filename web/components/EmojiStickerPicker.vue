@@ -124,19 +124,21 @@ function jumpTo(id: string) {
       </section>
 
       <section>
-        <p class="picker-title"><Star :size="12" :stroke-width="2.2" /> Favoritas</p>
-        <div class="sticker-grid">
+        <p class="picker-title picker-title-row">
+          <span><Star :size="12" :stroke-width="2.2" /> Favoritas</span>
           <button
             type="button"
-            class="sticker-btn sticker-create"
+            class="sticker-create"
             :disabled="importing"
-            title="Criar ou importar figurinhas (imagens ou .webp do WhatsApp)"
+            title="Criar figurinha (imagens ou .webp do WhatsApp)"
+            aria-label="Criar figurinha"
             @click="fileInput?.click()"
           >
-            <Loader2 v-if="importing" :size="26" class="spin" />
-            <Plus v-else :size="28" :stroke-width="2" />
-            <span>{{ importing ? 'Salvando…' : 'Criar' }}</span>
+            <Loader2 v-if="importing" :size="15" class="spin" />
+            <Plus v-else :size="16" :stroke-width="2.2" />
           </button>
+        </p>
+        <div class="sticker-grid">
           <button
             v-for="f in stickers.favorites.value"
             :key="f.id"
@@ -150,7 +152,7 @@ function jumpTo(id: string) {
           </button>
         </div>
         <p v-if="stickers.loaded.value && !stickers.favorites.value.length" class="sticker-hint">
-          Toque em <strong>Criar</strong> para transformar fotos em figurinhas ou importar os .webp da pasta “WhatsApp Stickers”. Para salvar
+          Toque no <strong>+</strong> para transformar fotos em figurinhas ou importar os .webp da pasta “WhatsApp Stickers”. Para salvar
           uma figurinha recebida, use o menu dela na conversa.
         </p>
         <input ref="fileInput" type="file" accept="image/webp,image/png,image/jpeg,image/gif" multiple hidden @change="onFiles" />

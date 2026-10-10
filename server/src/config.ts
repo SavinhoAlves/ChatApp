@@ -20,7 +20,11 @@ const parsed = z
     // Pasta onde fotos/áudios/arquivos enviados no chat são salvos.
     UPLOAD_DIR: z.string().default('uploads'),
     // Envio do código de ativação. 'console' só imprime no log do servidor (desenvolvimento).
-    SMS_PROVIDER: z.enum(['console', 'twilio']).default('console'),
+    // 'smsgate' envia pelo seu próprio Android com o app SMS Gate (https://sms-gate.app), no modo Cloud.
+    SMS_PROVIDER: z.enum(['console', 'twilio', 'smsgate']).default('console'),
+    SMSGATE_URL: z.string().default('https://api.sms-gate.app/3rdparty/v1'),
+    SMSGATE_USERNAME: z.preprocess(emptyToUndefined, z.string().optional()),
+    SMSGATE_PASSWORD: z.preprocess(emptyToUndefined, z.string().optional()),
     TWILIO_ACCOUNT_SID: z.preprocess(emptyToUndefined, z.string().optional()),
     TWILIO_AUTH_TOKEN: z.preprocess(emptyToUndefined, z.string().optional()),
     TWILIO_FROM: z.preprocess(emptyToUndefined, z.string().optional()),
@@ -58,12 +62,22 @@ export const config = {
     twilioSid: env.TWILIO_ACCOUNT_SID,
     twilioToken: env.TWILIO_AUTH_TOKEN,
     twilioFrom: env.TWILIO_FROM,
+    smsgateUrl: env.SMSGATE_URL.replace(/\/+$/, ''),
+    smsgateUser: env.SMSGATE_USERNAME,
+    smsgatePass: env.SMSGATE_PASSWORD,
+    // O SMS Gate só manda SMS; ligação com o código precisa do Twilio (ou do console, em desenvolvimento).
+    canCall: env.SMS_PROVIDER !== 'smsgate',
   },
   turn: { url: env.TURN_URL, username: env.TURN_USERNAME, credential: env.TURN_CREDENTIAL },
 };
 
 if (env.SMS_PROVIDER === 'twilio' && !(env.TWILIO_ACCOUNT_SID && env.TWILIO_AUTH_TOKEN && env.TWILIO_FROM)) {
   console.error('Configuração inválida (.env): SMS_PROVIDER=twilio exige TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN e TWILIO_FROM');
+  process.exit(1);
+}
+
+if (env.SMS_PROVIDER === 'smsgate' && !(env.SMSGATE_USERNAME && env.SMSGATE_PASSWORD)) {
+  console.error('Configuração inválida (.env): SMS_PROVIDER=smsgate exige SMSGATE_USERNAME e SMSGATE_PASSWORD');
   process.exit(1);
 }
 
