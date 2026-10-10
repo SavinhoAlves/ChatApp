@@ -28,6 +28,9 @@ const peers = new Map<string, RTCPeerConnection>();
 const pendingCandidates = new Map<string, RTCIceCandidateInit[]>();
 let localStream: MediaStream | null = null;
 let iceServers: RTCIceServer[] | null = null;
+// A senha do TURN é temporária: pede outra depois de 1 hora (ela vale 12h no servidor).
+let iceFetchedAt = 0;
+const ICE_REFRESH_MS = 60 * 60_000;
 let boundSocket: Socket | null = null;
 let ringer: { stop: () => void } | null = null;
 let endTimer: ReturnType<typeof setTimeout> | undefined;
@@ -96,11 +99,13 @@ export function useCall() {
   }
 
   async function getIceServers() {
-    if (iceServers) return iceServers;
+    if (iceServers && Date.now() - iceFetchedAt < ICE_REFRESH_MS) return iceServers;
     try {
       iceServers = (await api<{ iceServers: RTCIceServer[] }>('/calls/ice')).iceServers;
+      iceFetchedAt = Date.now();
     } catch {
-      iceServers = [{ urls: 'stun:stun.l.google.com:19302' }];
+      // Sem conexão com a API: tenta só com STUN (sem guardar, para buscar o TURN na próxima).
+      return iceServers ?? [{ urls: 'stun:stun.l.google.com:19302' }];
     }
     return iceServers;
   }

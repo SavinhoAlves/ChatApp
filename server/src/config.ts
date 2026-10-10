@@ -32,7 +32,11 @@ const parsed = z
     TWILIO_AUTH_TOKEN: z.preprocess(emptyToUndefined, z.string().optional()),
     TWILIO_FROM: z.preprocess(emptyToUndefined, z.string().optional()),
     // Ligações: servidor TURN (opcional, recomendado em produção) para chamadas atravessarem qualquer rede.
+    // TURN_URL aceita várias, separadas por vírgula (ex.: UDP, TCP e TLS na 5349).
     TURN_URL: z.preprocess(emptyToUndefined, z.string().optional()),
+    // Recomendado: segredo compartilhado com o coturn (use-auth-secret). Cada pessoa recebe uma senha
+    // temporária assinada com ele. Sem o segredo, usa TURN_USERNAME/TURN_CREDENTIAL fixos.
+    TURN_SECRET: z.preprocess(emptyToUndefined, z.string().optional()),
     TURN_USERNAME: z.preprocess(emptyToUndefined, z.string().optional()),
     TURN_CREDENTIAL: z.preprocess(emptyToUndefined, z.string().optional()),
   })
@@ -73,7 +77,15 @@ export const config = {
     // Ligação com o código só existe com Twilio (ou no console, em desenvolvimento).
     canCall: env.SMS_PROVIDER === 'twilio' || env.SMS_PROVIDER === 'console',
   },
-  turn: { url: env.TURN_URL, username: env.TURN_USERNAME, credential: env.TURN_CREDENTIAL },
+  turn: {
+    urls: (env.TURN_URL ?? '')
+      .split(',')
+      .map((s) => s.trim())
+      .filter(Boolean),
+    secret: env.TURN_SECRET,
+    username: env.TURN_USERNAME,
+    credential: env.TURN_CREDENTIAL,
+  },
 };
 
 if (env.SMS_PROVIDER === 'twilio' && !(env.TWILIO_ACCOUNT_SID && env.TWILIO_AUTH_TOKEN && env.TWILIO_FROM)) {
