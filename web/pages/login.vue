@@ -9,7 +9,7 @@ const auth = useAuth();
 type Method = 'qr' | 'phone';
 type Step = 'phone' | 'code' | 'profile';
 
-const method = ref<Method>('phone');
+const method = ref<Method>(isDesktopDevice() ? 'qr' : 'phone');
 const step = ref<Step>('phone');
 const error = ref('');
 const loading = ref(false);
@@ -19,8 +19,6 @@ const code = ref('');
 const resendIn = ref(0);
 const signupToken = ref('');
 const displayName = ref('');
-// Computador: o caminho principal é o QR; telefone fica como alternativa. No celular, só telefone.
-const isDesktop = ref(false);
 
 const titles: Record<Step, string> = { phone: 'Seu número', code: 'Confirme o código', profile: 'Seu perfil' };
 
@@ -183,10 +181,9 @@ watch(method, (m) => {
   else stopQr();
 });
 
+// Computador: só QR code (o número/código é coisa do app no celular, como no WhatsApp).
 onMounted(() => {
-  // Em tela grande (computador) o QR é o caminho principal; no celular, telefone + SMS.
-  isDesktop.value = window.matchMedia('(min-width: 900px) and (pointer: fine)').matches;
-  if (isDesktop.value) method.value = 'qr';
+  if (method.value === 'qr') void startQr();
 });
 onBeforeUnmount(() => {
   stopQr();
@@ -213,7 +210,7 @@ useHead({ title: 'Entrar · Chat' });
           <li>Toque em <strong>Conectar dispositivo</strong></li>
           <li>Aponte a câmera do celular para esta tela para escanear o código</li>
         </ol>
-        <button class="link-btn" type="button" @click="method = 'phone'">Entrar com número de telefone</button>
+        <NuxtLink class="link-btn" to="/inicio">Voltar à apresentação</NuxtLink>
       </div>
 
       <div class="qr-screen-side">
@@ -322,9 +319,6 @@ useHead({ title: 'Entrar · Chat' });
 
       <p v-if="error" class="error" role="alert">{{ error }}</p>
 
-      <div v-if="isDesktop && step === 'phone'" class="auth-links center">
-        <button class="link-btn" type="button" @click="method = 'qr'">Entrar com QR code</button>
-      </div>
     </div>
   </main>
 </template>
