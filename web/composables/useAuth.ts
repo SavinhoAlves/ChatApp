@@ -97,7 +97,7 @@ export function useAuth() {
 
   /** Passo 1: pede o código por SMS. Devolve o número já normalizado. */
   async function requestCode(phone: string, channel?: 'sms' | 'call') {
-    return api<{ phone: string; channel: 'sms' | 'call'; canSms: boolean; canCall?: boolean; resendInSeconds: number; devCode?: string }>('/auth/phone/request', {
+    return api<{ phone: string; channel: 'sms' | 'call' | 'admin'; canSms: boolean; canCall?: boolean; resendInSeconds: number; devCode?: string }>('/auth/phone/request', {
       method: 'POST',
       body: { phone, channel },
     });

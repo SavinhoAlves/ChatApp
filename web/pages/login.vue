@@ -51,10 +51,16 @@ async function run(fn: () => Promise<void>) {
 // Modo desenvolvimento (SMS "console"): o servidor devolve o código e a tela já mostra/preenche.
 const devCode = ref('');
 // Como o código foi enviado: SMS (celular) ou ligação (fixo, 0800, 400x — ou se a pessoa pedir).
-const channel = ref<'sms' | 'call'>('sms');
+// 'admin': o código foi para o WhatsApp do administrador, que repassa à pessoa.
+const channel = ref<'sms' | 'call' | 'admin'>('sms');
 const canSms = ref(true);
 // Com SMS pelo próprio celular (SMS Gate) não há ligação: some o "Me ligue".
 const canCall = ref(true);
+const codeHint = computed(() => {
+  if (channel.value === 'call') return `Vamos ligar para ${formatPhone(phone.value)} e ditar o código`;
+  if (channel.value === 'admin') return 'Peça o código de ativação ao administrador do Chat';
+  return `Código enviado por SMS para ${formatPhone(phone.value)}`;
+});
 
 const sendCode = (via?: 'sms' | 'call') =>
   run(async () => {
@@ -246,7 +252,7 @@ useHead({ title: 'Entrar · Chat' });
       <!-- Telefone: código -->
       <form v-else-if="step === 'code'" class="auth-form" @submit.prevent="confirmCode">
         <label class="field">
-          <span>{{ channel === 'call' ? `Vamos ligar para ${formatPhone(phone)} e ditar o código` : `Código enviado por SMS para ${formatPhone(phone)}` }}</span>
+          <span>{{ codeHint }}</span>
           <small v-if="devCode" class="dev-code">Modo desenvolvimento: o código é <strong>{{ devCode }}</strong> (já preenchido).</small>
           <div class="field-icon">
             <Lock :size="16" :stroke-width="2" />
@@ -269,11 +275,11 @@ useHead({ title: 'Entrar · Chat' });
         </button>
         <div class="auth-links">
           <button class="link-btn" type="button" @click="step = 'phone'">Trocar número</button>
-          <button class="link-btn" type="button" :disabled="resendIn > 0 || loading" @click="sendCode(channel)">
-            {{ resendIn > 0 ? `Reenviar em ${resendIn}s` : channel === 'call' ? 'Ligar de novo' : 'Reenviar SMS' }}
+          <button class="link-btn" type="button" :disabled="resendIn > 0 || loading" @click="sendCode(channel === 'admin' ? undefined : channel)">
+            {{ resendIn > 0 ? `Reenviar em ${resendIn}s` : channel === 'call' ? 'Ligar de novo' : channel === 'admin' ? 'Pedir outro código' : 'Reenviar SMS' }}
           </button>
           <button v-if="channel === 'sms' && canCall" class="link-btn" type="button" :disabled="resendIn > 0 || loading" @click="sendCode('call')">Me ligue</button>
-          <button v-else-if="canSms" class="link-btn" type="button" :disabled="resendIn > 0 || loading" @click="sendCode('sms')">Enviar por SMS</button>
+          <button v-else-if="channel === 'call' && canSms" class="link-btn" type="button" :disabled="resendIn > 0 || loading" @click="sendCode('sms')">Enviar por SMS</button>
         </div>
       </form>
 

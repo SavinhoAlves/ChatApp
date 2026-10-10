@@ -69,3 +69,20 @@ export async function sendVoiceCode(phone: string, code: string) {
     throw new Error('call_failed');
   }
 }
+
+/**
+ * Modo 'whatsapp-admin': o código vai para o WhatsApp do administrador pelo CallMeBot (grátis, uso pessoal),
+ * e ele repassa à pessoa. Serve para poucos cadastros sem precisar de SMS.
+ */
+export async function sendAdminCode(phone: string, code: string) {
+  const { callmebotPhone, callmebotApiKey } = config.sms;
+  const text = `*Chat* — código de ativação para ${phone}: *${code}*`;
+  const url = `https://api.callmebot.com/whatsapp.php?${new URLSearchParams({ phone: callmebotPhone!, text, apikey: callmebotApiKey! })}`;
+  const res = await fetch(url, { signal: AbortSignal.timeout(15_000) });
+  // O CallMeBot às vezes responde 200 com o erro no corpo (ex.: apikey inválida).
+  const body = await res.text().catch(() => '');
+  if (!res.ok || /invalid|error|not allowed/i.test(body)) {
+    console.error('Falha ao enviar código pelo WhatsApp (CallMeBot):', res.status, body.replace(/<[^>]+>/g, ' ').trim().slice(0, 300));
+    throw new Error('whatsapp_failed');
+  }
+}

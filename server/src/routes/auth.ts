@@ -10,7 +10,7 @@ import { linkPhoneContacts } from '../services/contacts.js';
 import { emitToUsers } from '../io.js';
 import { BUSINESS_CATEGORIES } from './business.js';
 import { canReceiveSms, INVALID_PHONE_MESSAGE, normalizePhone } from '../services/phone.js';
-import { sendSms, sendVoiceCode } from '../services/sms.js';
+import { sendAdminCode, sendSms, sendVoiceCode } from '../services/sms.js';
 import { createSession, deviceInfoSchema, hashSecret, safeEqual } from '../services/sessions.js';
 
 const CODE_TTL_MS = 10 * 60_000;
@@ -70,8 +70,10 @@ export async function authRoutes(app: FastifyInstance) {
       const { phone, channel: wanted } = validate(requestCodeSchema, request.body);
       const smsCapable = canReceiveSms(phone);
       const { canCall } = config.sms;
-      if (!smsCapable && !canCall) throw new HttpError(400, 'Este número não recebe SMS. Use um celular.');
-      const channel = canCall && (wanted === 'call' || !smsCapable) ? 'call' : 'sms';
+      const viaAdmin = config.sms.provider === 'whatsapp-admin';
+      if (!viaAdmin && !smsCapable && !canCall) throw new HttpError(400, 'Este número não recebe SMS. Use um celular.');
+      // 'admin': o código vai para o WhatsApp do administrador, que repassa (qualquer número serve).
+      const channel = viaAdmin ? 'admin' : canCall && (wanted === 'call' || !smsCapable) ? 'call' : 'sms';
       if (!config.registrationOpen && !(await prisma.user.findUnique({ where: { phone }, select: { id: true } }))) {
         throw new HttpError(403, 'Cadastros estão desativados');
       }
@@ -95,10 +97,14 @@ export async function authRoutes(app: FastifyInstance) {
       });
 
       try {
-        if (channel === 'sms') await sendSms(phone, `Seu código do Chat é ${code}. Não compartilhe com ninguém.`);
+        if (channel === 'admin') await sendAdminCode(phone, code);
+        else if (channel === 'sms') await sendSms(phone, `Seu código do Chat é ${code}. Não compartilhe com ninguém.`);
         else await sendVoiceCode(phone, code);
       } catch {
-        throw new HttpError(502, channel === 'sms' ? 'Não foi possível enviar o SMS agora. Tente novamente.' : 'Não foi possível ligar agora. Tente novamente.');
+        throw new HttpError(
+          502,
+          channel === 'call' ? 'Não foi possível ligar agora. Tente novamente.' : 'Não foi possível enviar o código agora. Tente novamente.',
+        );
       }
 
       // Só em desenvolvimento com SMS "console": devolve o código para a tela de login mostrar
