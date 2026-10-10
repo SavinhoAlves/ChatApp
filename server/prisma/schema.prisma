@@ -52,6 +52,7 @@ model User {
   sessions       Session[]
   business       BusinessProfile?
   phoneContacts  PhoneContact[]
+  stickers       UserSticker[]
   chatLists      ChatList[]
   reportsMade    Report[]         @relation("ReportsMade")
   reportsAgainst Report[]         @relation("ReportsAgainst")
@@ -311,4 +312,18 @@ model PhoneContact {
 
   @@unique([ownerId, phone])
   @@index([phone])
+}
+
+// Figurinhas favoritas de cada pessoa (como a estrela do WhatsApp): criadas a partir de uma imagem,
+// importadas (.webp do WhatsApp) ou salvas de uma figurinha recebida. A url aponta para /uploads ou /stickers.
+model UserSticker {
+  id        String   @id @default(cuid())
+  userId    String
+  url       String
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, url])
+  @@index([userId, createdAt])
 }

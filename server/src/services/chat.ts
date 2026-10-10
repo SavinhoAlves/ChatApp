@@ -7,7 +7,7 @@ import { HttpError } from '../errors.js';
 import { emitToUsers, getPresence } from '../io.js';
 import { isBlocked, listBlockedIds } from './blocks.js';
 import { contactNameMap, isContact } from './contacts.js';
-import { isStickerId, stickerUrl } from './stickers.js';
+import { isStickerId, stickerUrl, USER_STICKER_PREFIX, userStickerUrl } from './stickers.js';
 
 /** Remove o arquivo de um anexo do disco (se houver). Nunca derruba a exclusão da mensagem. */
 async function deleteAttachmentFile(url: string | null) {
@@ -217,6 +217,15 @@ async function attachmentData(attachment: AttachmentInput | null | undefined, se
     };
   }
   if (attachment.kind === 'sticker') {
+    if (attachment.id.startsWith(USER_STICKER_PREFIX)) {
+      const url = await userStickerUrl(senderId, attachment.id.slice(USER_STICKER_PREFIX.length));
+      return {
+        attachmentType: 'STICKER',
+        attachmentUrl: url,
+        attachmentName: attachment.id,
+        attachmentMime: url.endsWith('.svg') ? 'image/svg+xml' : url.endsWith('.png') ? 'image/png' : 'image/webp',
+      };
+    }
     if (!isStickerId(attachment.id)) throw new HttpError(400, 'Figurinha desconhecida');
     return {
       attachmentType: 'STICKER',

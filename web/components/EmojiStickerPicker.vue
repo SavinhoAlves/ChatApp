@@ -1,8 +1,9 @@
 <script setup lang="ts">
-import { Clock, Smile, Sticker } from '@lucide/vue';
+import { Clock, Loader2, Plus, Smile, Star, Sticker } from '@lucide/vue';
+import type { StickerRef } from '~/composables/useStickers';
 import { EMOJI_CATEGORIES } from '~/utils/emoji';
 
-const emit = defineEmits<{ emoji: [value: string]; sticker: [id: string] }>();
+const emit = defineEmits<{ emoji: [value: string]; sticker: [sticker: StickerRef] }>();
 
 // Mesmos ids de server/src/services/stickers.ts (arquivos em public/stickers).
 const STICKERS = [
@@ -43,6 +44,47 @@ function pickEmoji(value: string) {
   emit('emoji', value);
 }
 
+const stickers = useStickers();
+const { confirm, alert } = useConfirm();
+const fileInput = ref<HTMLInputElement | null>(null);
+const importing = ref(false);
+
+// Recentes de favoritas removidas não podem mais ser enviadas (o servidor só aceita as suas).
+const recentStickers = computed(() =>
+  stickers.recent.value.filter((r) => !r.id.startsWith('u-') || stickers.favorites.value.some((f) => `u-${f.id}` === r.id)),
+);
+
+watch(tab, (t) => {
+  if (t === 'sticker' && !stickers.loaded.value) void stickers.load().catch(() => {});
+});
+
+function pickSticker(s: StickerRef) {
+  stickers.markUsed(s);
+  emit('sticker', s);
+}
+
+async function onFiles(event: Event) {
+  const input = event.target as HTMLInputElement;
+  const files = [...(input.files ?? [])];
+  input.value = '';
+  if (!files.length) return;
+  importing.value = true;
+  const res = await stickers.importFiles(files);
+  importing.value = false;
+  if (res.failed) {
+    await alert({
+      title: res.ok ? `${res.ok} figurinha(s) adicionada(s)` : 'Não foi possível criar a figurinha',
+      message: `${res.failed} arquivo(s) não deram certo. ${res.lastError}`,
+    });
+  }
+}
+
+// Como no WhatsApp: segurar (ou clique direito) numa favorita oferece remover.
+async function removeFavorite(id: string) {
+  const ok = await confirm({ message: 'Remover esta figurinha das favoritas?', confirmLabel: 'Remover', danger: true });
+  if (ok) await stickers.remove(id).catch(() => {});
+}
+
 function jumpTo(id: string) {
   scroller.value?.querySelector(`[data-cat="${id}"]`)?.scrollIntoView({ block: 'start' });
 }
@@ -72,12 +114,63 @@ function jumpTo(id: string) {
     </template>
 
     <div v-else class="picker-scroll">
-      <p class="picker-title">Figurinhas do Chat</p>
-      <div class="sticker-grid">
-        <button v-for="s in STICKERS" :key="s.id" type="button" class="sticker-btn" :title="s.label" @click="emit('sticker', s.id)">
-          <img :src="`/stickers/${s.id}.svg`" :alt="s.label" width="88" height="88" loading="lazy" />
-        </button>
-      </div>
+      <section v-if="recentStickers.length">
+        <p class="picker-title"><Clock :size="12" :stroke-width="2.2" /> Recentes</p>
+        <div class="sticker-grid">
+          <button v-for="s in recentStickers" :key="`r-${s.url}`" type="button" class="sticker-btn" @click="pickSticker(s)">
+            <img :src="s.url" alt="Figurinha" width="88" height="88" loading="lazy" />
+          </button>
+        </div>
+      </section>
+
+      <section>
+        <p class="picker-title"><Star :size="12" :stroke-width="2.2" /> Favoritas</p>
+        <div class="sticker-grid">
+          <button
+            type="button"
+            class="sticker-btn sticker-create"
+            :disabled="importing"
+            title="Criar ou importar figurinhas (imagens ou .webp do WhatsApp)"
+            @click="fileInput?.click()"
+          >
+            <Loader2 v-if="importing" :size="26" class="spin" />
+            <Plus v-else :size="28" :stroke-width="2" />
+            <span>{{ importing ? 'Salvando…' : 'Criar' }}</span>
+          </button>
+          <button
+            v-for="f in stickers.favorites.value"
+            :key="f.id"
+            type="button"
+            class="sticker-btn"
+            title="Segure para remover"
+            @click="pickSticker({ id: `u-${f.id}`, url: f.url })"
+            @contextmenu.prevent="removeFavorite(f.id)"
+          >
+            <img :src="f.url" alt="Figurinha favorita" width="88" height="88" loading="lazy" />
+          </button>
+        </div>
+        <p v-if="stickers.loaded.value && !stickers.favorites.value.length" class="sticker-hint">
+          Toque em <strong>Criar</strong> para transformar fotos em figurinhas ou importar os .webp da pasta “WhatsApp Stickers”. Para salvar
+          uma figurinha recebida, use o menu dela na conversa.
+        </p>
+        <input ref="fileInput" type="file" accept="image/webp,image/png,image/jpeg,image/gif" multiple hidden @change="onFiles" />
+      </section>
+
+      <section>
+        <p class="picker-title">Figurinhas do Chat</p>
+        <div class="sticker-grid">
+          <button
+            v-for="s in STICKERS"
+            :key="s.id"
+            type="button"
+            class="sticker-btn"
+            :title="s.label"
+            @click="pickSticker({ id: s.id, url: `/stickers/${s.id}.svg` })"
+          >
+            <img :src="`/stickers/${s.id}.svg`" :alt="s.label" width="88" height="88" loading="lazy" />
+          </button>
+        </div>
+      </section>
     </div>
 
     <nav class="picker-tabs">

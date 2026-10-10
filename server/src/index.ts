@@ -19,6 +19,7 @@ import { listRoutes } from './routes/lists.js';
 import { deviceRoutes } from './routes/devices.js';
 import { conversationRoutes } from './routes/conversations.js';
 import { messageRoutes } from './routes/messages.js';
+import { stickerRoutes } from './routes/stickers.js';
 import { uploadRoutes } from './routes/uploads.js';
 
 const app = Fastify({
@@ -69,6 +70,7 @@ await app.register(
     await api.register(deviceRoutes);
     await api.register(conversationRoutes);
     await api.register(messageRoutes);
+    await api.register(stickerRoutes);
     await api.register(uploadRoutes);
   },
   { prefix: '/api' },

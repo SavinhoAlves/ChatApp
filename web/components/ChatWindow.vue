@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ArrowLeft, Ban, Camera, Check, ChevronDown, Copy, File, FileText, Images, MapPin, Mic, Phone, Plus, Search, Send, ShieldAlert, Smile, Store, Timer, Trash2, Upload, UserPlus, UserRound, Video, X } from '@lucide/vue';
+import type { StickerRef } from '~/composables/useStickers';
 import type { Attachment, Message, User } from '~/types';
 import { formatPhone } from '~/utils/phone';
 
@@ -399,10 +400,10 @@ function insertEmoji(value: string) {
   });
 }
 
-function sendSticker(id: string) {
+function sendSticker(sticker: StickerRef) {
   pickerOpen.value = false;
   if (!activeId.value) return;
-  chat.send(activeId.value, '', replyTo.value, { type: 'STICKER', url: `/stickers/${id}.svg`, name: id });
+  chat.send(activeId.value, '', replyTo.value, { type: 'STICKER', url: sticker.url, name: sticker.id });
   replyTo.value = null;
   stick.value = true;
   scrollToBottom();

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Ban, Check, File as FileIcon, MapPin, MoreVertical, Pencil, Phone, Radio, Reply, RotateCw, Timer, Trash2, Video } from '@lucide/vue';
+import { Ban, Check, File as FileIcon, MapPin, MoreVertical, Pencil, Phone, Radio, Reply, RotateCw, Star, Timer, Trash2, Video } from '@lucide/vue';
 import type { Message } from '~/types';
 
 const props = defineProps<{
@@ -100,6 +100,25 @@ function closeOnOutsideClick(event: MouseEvent) {
 }
 onMounted(() => document.addEventListener('click', closeOnOutsideClick));
 onBeforeUnmount(() => document.removeEventListener('click', closeOnOutsideClick));
+
+// Figurinha: "Adicionar às favoritas" / "Remover das favoritas", como a estrela do WhatsApp.
+const stickers = useStickers();
+const isSticker = computed(() => props.message.attachment?.type === 'STICKER');
+const favorite = computed(() => (isSticker.value ? stickers.favoriteByUrl(props.message.attachment?.url) : undefined));
+
+watch(menuOpen, (open) => {
+  if (open && isSticker.value && !stickers.loaded.value) void stickers.load().catch(() => {});
+});
+
+async function toggleFavorite() {
+  menuOpen.value = false;
+  try {
+    if (favorite.value) await stickers.remove(favorite.value.id);
+    else await stickers.addFromMessage(props.message.id);
+  } catch {
+    // falhou (sem conexão, limite de favoritas): o menu continua mostrando o estado real
+  }
+}
 
 function act(name: 'reply' | 'edit' | 'remove') {
   menuOpen.value = false;
@@ -224,7 +243,10 @@ function act(name: 'reply' | 'edit' | 'remove') {
 
       <div v-if="menuOpen" class="menu" role="menu">
         <button class="menu-item" role="menuitem" type="button" @click="act('reply')"><Reply :size="15" :stroke-width="2" /> Responder</button>
-        <button v-if="mine" class="menu-item" role="menuitem" type="button" @click="act('edit')"><Pencil :size="15" :stroke-width="2" /> Editar</button>
+        <button v-if="isSticker" class="menu-item" role="menuitem" type="button" @click="toggleFavorite">
+          <Star :size="15" :stroke-width="2" /> {{ favorite ? 'Remover das favoritas' : 'Adicionar às favoritas' }}
+        </button>
+        <button v-if="mine && !isSticker" class="menu-item" role="menuitem" type="button" @click="act('edit')"><Pencil :size="15" :stroke-width="2" /> Editar</button>
         <button v-if="mine" class="menu-item danger" role="menuitem" type="button" @click="act('remove')"><Trash2 :size="15" :stroke-width="2" /> Apagar para todos</button>
       </div>
     </div>
