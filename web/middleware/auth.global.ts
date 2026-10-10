@@ -1,5 +1,5 @@
-// Sem login: no celular vai direto para o número/código; no computador passa pela apresentação (/inicio)
-// e de lá para o QR code.
+// Sem login: quem abre o endereço no navegador vê a apresentação (/inicio). O app instalado no celular
+// vai direto para o número/código. No computador, da apresentação se segue para o QR code.
 const PUBLIC = ['/login', '/inicio'];
 
 export default defineNuxtRouteMiddleware((to) => {
@@ -8,7 +8,6 @@ export default defineNuxtRouteMiddleware((to) => {
     if (PUBLIC.includes(to.path)) return navigateTo('/');
     return;
   }
-  const desktop = isDesktopDevice();
-  if (to.path === '/inicio' && !desktop) return navigateTo('/login');
-  if (!PUBLIC.includes(to.path)) return navigateTo(desktop ? '/inicio' : '/login');
+  if (to.path === '/inicio' && isInstalledApp()) return navigateTo('/login');
+  if (!PUBLIC.includes(to.path)) return navigateTo(isInstalledApp() ? '/login' : '/inicio');
 });

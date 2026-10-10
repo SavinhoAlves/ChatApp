@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Ban, Check, File as FileIcon, MapPin, MoreVertical, Pencil, Phone, Radio, Reply, RotateCw, Star, Timer, Trash2, Video } from '@lucide/vue';
+import { Ban, Check, Copy, File as FileIcon, MapPin, MoreVertical, Pencil, Phone, Radio, Reply, RotateCw, Star, Timer, Trash2, Video } from '@lucide/vue';
 import type { Message } from '~/types';
 
 const props = defineProps<{
@@ -95,6 +95,20 @@ const mapPreview = computed(() => {
 
 const canAct = computed(() => !props.message.deleted && !props.message.id.startsWith('tmp-'));
 
+// Toque longo (celular) ou clique direito abre o menu da mensagem; no celular o botão ⋮ fica escondido.
+const press = useLongPress(
+  () => {
+    if (canAct.value && !props.selecting) menuOpen.value = true;
+  },
+  { rightClick: false },
+);
+
+const canCopy = computed(() => !!props.message.body && !props.message.deleted);
+async function copyText() {
+  menuOpen.value = false;
+  await navigator.clipboard?.writeText(props.message.body).catch(() => {});
+}
+
 function closeOnOutsideClick(event: MouseEvent) {
   if (menuOpen.value && root.value && !root.value.contains(event.target as Node)) menuOpen.value = false;
 }
@@ -144,6 +158,11 @@ function act(name: 'reply' | 'edit' | 'remove') {
     <div
       class="bubble"
       :class="{ deleted: message.deleted, failed: message.status === 'failed', sticker: !message.deleted && message.attachment?.type === 'STICKER' }"
+      @touchstart.passive="press.onTouchstart"
+      @touchmove.passive="press.onTouchmove"
+      @touchend="press.onTouchend"
+      @touchcancel="press.onTouchcancel"
+      @contextmenu="press.onContextmenu"
     >
       <div v-if="senderName" class="bubble-sender" :style="senderColor ? { color: senderColor } : undefined">
         {{ senderName }}
@@ -169,7 +188,7 @@ function act(name: 'reply' | 'edit' | 'remove') {
           :src="message.attachment.url"
           class="bubble-image"
           alt="Imagem enviada"
-          @click="lightbox = true"
+          @click="!press.consumeClick() && (lightbox = true)"
         />
         <video v-else-if="message.attachment?.type === 'VIDEO'" :src="message.attachment.url" class="bubble-video" controls />
         <audio v-else-if="message.attachment?.type === 'AUDIO'" :src="message.attachment.url" class="bubble-audio" controls />
@@ -243,6 +262,7 @@ function act(name: 'reply' | 'edit' | 'remove') {
 
       <div v-if="menuOpen" class="menu" role="menu">
         <button class="menu-item" role="menuitem" type="button" @click="act('reply')"><Reply :size="15" :stroke-width="2" /> Responder</button>
+        <button v-if="canCopy" class="menu-item" role="menuitem" type="button" @click="copyText"><Copy :size="15" :stroke-width="2" /> Copiar</button>
         <button v-if="isSticker" class="menu-item" role="menuitem" type="button" @click="toggleFavorite">
           <Star :size="15" :stroke-width="2" /> {{ favorite ? 'Remover das favoritas' : 'Adicionar às favoritas' }}
         </button>

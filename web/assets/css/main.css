@@ -4449,3 +4449,394 @@ html[data-accent='roxo'] body {
 .pending-item:hover {
   background: var(--glass);
 }
+
+/* =====================================================================
+   Mobile first: o Chat é um app de celular (o computador entra pelo QR).
+   No celular: abas embaixo, botão flutuante, topo limpo, balões leves e
+   menus por toque longo. Fica por último: vence os estilos acima.
+   ===================================================================== */
+
+/* Só aparecem no celular */
+.tabbar,
+.fab {
+  display: none;
+}
+
+@media (max-width: 760px) {
+  .hide-mobile {
+    display: none !important;
+  }
+
+  /* ---- Abas embaixo ---- */
+  .tabbar {
+    position: fixed;
+    inset: auto 0 0;
+    z-index: 30;
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    padding: 6px 8px max(8px, env(safe-area-inset-bottom));
+    border-top: 1px solid var(--glass-border);
+    background: rgb(var(--bg-rgb) / 0.82);
+    backdrop-filter: blur(22px) saturate(1.4);
+  }
+
+  .tabbar button {
+    display: grid;
+    justify-items: center;
+    gap: 3px;
+    padding: 4px 0;
+    border: 0;
+    background: transparent;
+    color: var(--muted);
+    font-size: 11px;
+    font-weight: 600;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .tabbar-icon {
+    position: relative;
+    display: grid;
+    place-items: center;
+    width: 56px;
+    height: 30px;
+    border-radius: 999px;
+    transition: background-color 0.2s var(--ease), color 0.2s var(--ease);
+  }
+
+  .tabbar button.active {
+    color: var(--text);
+  }
+
+  .tabbar button.active .tabbar-icon {
+    background: rgb(var(--accent-rgb) / 0.18);
+    color: var(--accent);
+  }
+
+  .tabbar-badge {
+    position: absolute;
+    top: -2px;
+    right: 8px;
+    min-width: 17px;
+    height: 17px;
+    padding: 0 5px;
+    border-radius: 999px;
+    background: var(--accent);
+    color: var(--on-accent);
+    font-size: 10.5px;
+    font-weight: 700;
+    line-height: 17px;
+  }
+
+  /* Espaço para as abas não cobrirem o fim das listas */
+  .app:not(.chat-open) .sidebar {
+    padding-bottom: calc(62px + env(safe-area-inset-bottom));
+  }
+
+  /* ---- Botão flutuante "Nova conversa" ---- */
+  .fab {
+    position: fixed;
+    right: 16px;
+    bottom: calc(78px + env(safe-area-inset-bottom));
+    z-index: 25;
+    display: grid;
+    place-items: center;
+    width: 56px;
+    height: 56px;
+    border: 0;
+    border-radius: 18px;
+    background: linear-gradient(135deg, rgb(var(--accent-light-rgb)), rgb(var(--accent-deep-rgb)));
+    color: var(--on-accent);
+    box-shadow: 0 10px 24px rgb(0 0 0 / 0.45), var(--glow);
+    transition: transform 0.15s var(--ease);
+  }
+
+  .fab:active {
+    transform: scale(0.94);
+  }
+
+  /* ---- Lista de conversas ---- */
+  .sidebar {
+    border-right: 0;
+    backdrop-filter: none;
+  }
+
+  .side-header {
+    padding: max(14px, env(safe-area-inset-top)) 16px 10px;
+  }
+
+  .side-header .me strong {
+    font-size: 26px;
+    letter-spacing: -0.02em;
+  }
+
+  .side-header .me small {
+    font-size: 12px;
+  }
+
+  .side-search .input {
+    height: 42px;
+    border-color: transparent;
+    background: rgb(255 255 255 / 0.06);
+  }
+
+  .filter-chips {
+    padding-bottom: 6px;
+  }
+
+  .conv-list {
+    padding: 2px 6px 16px;
+    gap: 0;
+  }
+
+  .conv-item {
+    padding: 10px 10px;
+    border: 0;
+    border-radius: 16px;
+    -webkit-tap-highlight-color: transparent;
+    -webkit-touch-callout: none;
+    user-select: none;
+  }
+
+  .conv-item:active {
+    background: var(--glass-strong);
+  }
+
+  .conv-item.active {
+    background: transparent;
+    box-shadow: none;
+  }
+
+  .conv-name {
+    font-size: 16px;
+    font-weight: 600;
+  }
+
+  .conv-preview {
+    font-size: 14px;
+  }
+
+  /* No toque não há "passar o mouse": o menu do card abre com toque longo */
+  .conv-menu-btn {
+    display: none;
+  }
+
+  /* ---- Topo da conversa ---- */
+  .chat-header {
+    gap: 2px;
+    padding: max(8px, env(safe-area-inset-top)) 6px 8px 4px;
+  }
+
+  .chat-title-btn {
+    flex: 1;
+    gap: 10px;
+    padding: 2px;
+  }
+
+  .chat-title strong {
+    font-size: 16.5px;
+  }
+
+  .chat-title small {
+    font-size: 12.5px;
+  }
+
+  .chat-actions {
+    gap: 0;
+  }
+
+  .chat-header .icon-btn,
+  .chat-actions .icon-btn {
+    width: 40px;
+    height: 40px;
+    border-color: transparent;
+    border-radius: 50%;
+    background: transparent;
+  }
+
+  /* ---- Mensagens ---- */
+  .messages {
+    gap: 3px;
+    padding: 12px 10px 8px;
+  }
+
+  .bubble {
+    max-width: 84%;
+    padding: 7px 11px 5px;
+    border-radius: 18px;
+    border-top-left-radius: 6px;
+    /* desfoque em cada balão pesa no celular: tira */
+    backdrop-filter: none;
+    box-shadow: 0 1px 2px rgb(0 0 0 / 0.25);
+    -webkit-touch-callout: none;
+    user-select: none;
+  }
+
+  .mine .bubble {
+    border-radius: 18px;
+    border-top-right-radius: 6px;
+  }
+
+  .msg-row.has-avatar .bubble {
+    border-radius: 18px;
+    border-bottom-left-radius: 6px;
+  }
+
+  .bubble-body {
+    font-size: 15.5px;
+    font-weight: 400;
+    line-height: 1.38;
+  }
+
+  .bubble-meta {
+    font-size: 11px;
+  }
+
+  .bubble.sticker {
+    box-shadow: none;
+  }
+
+  .bubble-sticker {
+    width: 140px;
+    height: 140px;
+  }
+
+  /* menu ⋮ escondido: abre com toque longo */
+  .msg-menu-btn {
+    display: none;
+  }
+
+  .msg-avatar {
+    width: 28px;
+  }
+
+  /* ---- Campo de mensagem ---- */
+  .composer {
+    padding: 4px 8px max(8px, env(safe-area-inset-bottom));
+  }
+
+  .composer-row {
+    padding: 4px;
+    box-shadow: none;
+  }
+}
+
+/* Celular: janelas sobem de baixo ("bottom sheet"), como nos apps nativos */
+@media (max-width: 760px) {
+  .overlay:has(> .dialog) {
+    place-items: end stretch;
+    padding: 0;
+  }
+
+  .overlay > .dialog {
+    width: 100%;
+    max-height: 92dvh;
+    padding-bottom: env(safe-area-inset-bottom);
+    border-radius: 26px 26px 0 0;
+    animation: sheet-in 0.26s var(--ease);
+  }
+
+  .overlay > .dialog::before {
+    content: '';
+    align-self: center;
+    flex: none;
+    width: 38px;
+    height: 4px;
+    margin-top: 8px;
+    border-radius: 999px;
+    background: rgb(255 255 255 / 0.22);
+  }
+
+  @keyframes sheet-in {
+    from {
+      transform: translateY(100%);
+    }
+  }
+}
+
+/* Login: subtítulo e "voltar" (todas as telas) */
+.auth-card {
+  position: relative;
+}
+
+.auth-sub {
+  margin: -8px 0 4px;
+  color: var(--muted);
+  font-size: 14px;
+  line-height: 1.5;
+  text-align: center;
+}
+
+.auth-back {
+  position: absolute;
+  top: 14px;
+  left: 14px;
+  display: grid;
+  place-items: center;
+  color: var(--text);
+}
+
+/* Celular: login em tela cheia, como num app nativo (sem cartão flutuando) */
+@media (max-width: 760px) {
+  .auth-page {
+    place-items: stretch;
+    padding: 0;
+  }
+
+  .auth-card {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    width: 100%;
+    min-height: 100dvh;
+    padding: max(56px, calc(env(safe-area-inset-top) + 48px)) 24px max(24px, env(safe-area-inset-bottom));
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    box-shadow: none;
+    backdrop-filter: none;
+  }
+
+  .auth-back {
+    top: max(12px, env(safe-area-inset-top));
+    left: 12px;
+    border-color: transparent;
+    background: transparent;
+  }
+
+  .auth-card .brand-logo {
+    align-self: center;
+    width: 76px;
+    margin-top: 12px;
+  }
+
+  .auth-card h1 {
+    margin-top: 6px;
+    font-size: 28px;
+    letter-spacing: -0.02em;
+  }
+
+  .auth-sub {
+    font-size: 15px;
+  }
+
+  /* O formulário ocupa o resto e o botão principal fica embaixo, ao alcance do polegar */
+  .auth-card .auth-form {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    gap: 14px;
+    margin-top: 10px;
+  }
+
+  .auth-card .auth-form > .btn-primary {
+    height: 52px;
+    margin-top: auto;
+    border-radius: 16px;
+    font-size: 16px;
+  }
+
+  .auth-card .input {
+    height: 52px;
+    font-size: 17px;
+  }
+}

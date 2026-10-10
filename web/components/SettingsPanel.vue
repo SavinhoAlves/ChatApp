@@ -66,7 +66,7 @@ const titles: Record<View, string> = {
   help: 'Ajuda e feedback',
 };
 
-const items: { view: View; label: string; hint: string; icon: Component }[] = [
+const items: { view: View; label: string; hint: string; icon: Component; desktopOnly?: boolean }[] = [
   { view: 'account', label: 'Conta', hint: 'Dispositivos conectados, seu número', icon: KeyRound },
   { view: 'business', label: 'Conta comercial', hint: 'Perfil da empresa: categoria, horário, endereço, site', icon: Store },
   { view: 'privacy', label: 'Privacidade', hint: 'Contatos bloqueados', icon: Lock },
@@ -74,7 +74,7 @@ const items: { view: View; label: string; hint: string; icon: Component }[] = [
   { view: 'lists', label: 'Listas', hint: 'Organize conversas: Família, Trabalho…', icon: List },
   { view: 'notifications', label: 'Notificações', hint: 'Avisos de novas mensagens', icon: Bell },
   { view: 'payments', label: 'Pagamentos', hint: 'Em breve', icon: Wallet },
-  { view: 'shortcuts', label: 'Atalhos do teclado', hint: 'Ações rápidas', icon: Keyboard },
+  { view: 'shortcuts', label: 'Atalhos do teclado', hint: 'Ações rápidas', icon: Keyboard, desktopOnly: true },
   { view: 'help', label: 'Ajuda e feedback', hint: 'Dúvidas, sobre o app', icon: CircleHelp },
 ];
 
@@ -233,7 +233,7 @@ const isMac = import.meta.client && /Mac|iPhone|iPad/.test(navigator.platform);
         </button>
 
         <nav class="settings-list">
-          <button v-for="item in items" :key="item.view" class="settings-item" type="button" @click="view = item.view">
+          <button v-for="item in items" :key="item.view" class="settings-item" :class="{ 'hide-mobile': item.desktopOnly }" type="button" @click="view = item.view">
             <component :is="item.icon" :size="20" :stroke-width="1.8" class="settings-icon" />
             <span class="settings-text">
               <strong>{{ item.label }}</strong>

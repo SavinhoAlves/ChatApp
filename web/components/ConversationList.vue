@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Archive, Bell, ChevronRight, EllipsisVertical, LogOut, Plus, Search, Settings, Smartphone, UserPlus, Users } from '@lucide/vue';
+import { Archive, Bell, ChevronRight, EllipsisVertical, LogOut, MessageSquarePlus, Plus, Search, Settings, Smartphone, UserPlus, Users } from '@lucide/vue';
 
 const emit = defineEmits<{ 'new-chat': [mode: 'direct' | 'group' | 'contact']; settings: [] }>();
 
@@ -112,7 +112,7 @@ function toggleArchived() {
         <strong>Conversas</strong>
         <small :class="connected ? 'ok' : 'warn'">{{ connected ? 'conectado' : 'reconectando…' }}</small>
       </div>
-      <button class="icon-btn" type="button" title="Nova conversa" aria-label="Nova conversa" @click="emit('new-chat', 'direct')">
+      <button class="icon-btn hide-mobile" type="button" title="Nova conversa" aria-label="Nova conversa" @click="emit('new-chat', 'direct')">
         <Plus :size="20" :stroke-width="1.8" />
       </button>
       <div ref="menuEl" class="header-menu">
@@ -209,6 +209,10 @@ function toggleArchived() {
         {{ emptyText }}
       </li>
     </ul>
+
+    <button class="fab" type="button" title="Nova conversa" aria-label="Nova conversa" @click="emit('new-chat', 'direct')">
+      <MessageSquarePlus :size="24" :stroke-width="2" />
+    </button>
 
     <DevicesDialog v-if="showDevices" @close="showDevices = false" />
   </aside>

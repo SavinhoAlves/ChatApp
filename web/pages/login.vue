@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Camera, IdCard, Lock, Phone, RefreshCw, Smartphone, X } from '@lucide/vue';
+import { ArrowLeft, Camera, IdCard, Lock, Phone, RefreshCw, Smartphone, X } from '@lucide/vue';
 import QRCode from 'qrcode';
 import { formatPhone } from '~/utils/phone';
 import { BUSINESS_CATEGORIES } from '~/utils/business';
@@ -21,6 +21,13 @@ const signupToken = ref('');
 const displayName = ref('');
 
 const titles: Record<Step, string> = { phone: 'Seu número', code: 'Confirme o código', profile: 'Seu perfil' };
+const subtitles: Record<Step, string> = {
+  phone: 'Vamos confirmar que o número é seu com um código de 6 dígitos.',
+  code: 'Digite o código para continuar.',
+  profile: 'É assim que as pessoas vão ver você no Chat.',
+};
+// App instalado não tem a apresentação: some o "voltar".
+const installed = isInstalledApp();
 
 // ---- Telefone + SMS ----
 let resendTimer: ReturnType<typeof setInterval> | undefined;
@@ -228,8 +235,12 @@ useHead({ title: 'Entrar · Chat' });
     </section>
 
     <div v-else class="auth-card">
+      <NuxtLink v-if="step === 'phone' && !installed" class="icon-btn auth-back" to="/inicio" aria-label="Voltar à apresentação">
+        <ArrowLeft :size="20" :stroke-width="2" />
+      </NuxtLink>
       <img v-if="step !== 'profile'" class="brand-logo" src="/logo.png" alt="Chat" width="96" height="96" />
       <h1>{{ titles[step] }}</h1>
+      <p class="auth-sub">{{ subtitles[step] }}</p>
 
       <!-- Telefone: número -->
       <form v-if="step === 'phone'" class="auth-form" @submit.prevent="sendCode()">
@@ -237,9 +248,9 @@ useHead({ title: 'Entrar · Chat' });
           <span>Número de telefone</span>
           <div class="field-icon">
             <Phone :size="16" :stroke-width="2" />
-            <input v-model="phone" class="input" type="tel" autocomplete="tel" inputmode="tel" placeholder="(11) 99999-9999 ou 0800 123 4567" required />
+            <input v-model="phone" class="input" type="tel" autocomplete="tel" inputmode="tel" placeholder="(11) 99999-9999" required />
           </div>
-          <small>Celular: código por SMS. Fixo, 0800 ou 4004 (empresas): ligamos e ditamos o código. Sem o +, assumimos Brasil (+55).</small>
+          <small>Com DDD. Sem o +, usamos Brasil (+55).</small>
         </label>
         <button class="btn btn-primary btn-block" type="submit" :disabled="loading || !phone.trim()">
           {{ loading ? 'Enviando…' : 'Receber código' }}

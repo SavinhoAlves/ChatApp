@@ -730,9 +730,9 @@ const replyPreviewName = computed(() => (replyTo.value && conv.value ? chat.user
               <button class="menu-item" role="menuitem" type="button" @click="startCall(true)"><Video :size="16" /> Ligação de vídeo</button>
             </div>
           </div>
-          <span class="chat-actions-sep" aria-hidden="true" />
+          <span class="chat-actions-sep hide-mobile" aria-hidden="true" />
         </template>
-        <button class="icon-btn" type="button" title="Pesquisar" aria-label="Pesquisar" @click="emit('search')"><Search :size="19" :stroke-width="1.9" /></button>
+        <button class="icon-btn hide-mobile" type="button" title="Pesquisar" aria-label="Pesquisar" @click="emit('search')"><Search :size="19" :stroke-width="1.9" /></button>
         <ChatOptionsMenu
           :conv="conv"
           @info="openInfo"

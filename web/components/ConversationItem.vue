@@ -33,22 +33,33 @@ const menuEl = ref<HTMLElement | null>(null);
 // rolagem (ex.: lista de Arquivadas). Abre para cima quando não cabe embaixo.
 const menuStyle = ref<Record<string, string>>({});
 const MENU_HEIGHT = 330;
+const MENU_WIDTH = 230;
 
-function toggleMenu() {
+function toggleMenu(point?: { x: number; y: number }) {
   if (menuOpen.value) {
     menuOpen.value = false;
     return;
   }
-  const rect = menuBtn.value?.getBoundingClientRect();
+  // Toque longo: o menu abre onde o dedo está (no celular o botão da setinha fica escondido).
+  const rect = point ? new DOMRect(point.x, point.y, 0, 0) : menuBtn.value?.getBoundingClientRect();
   if (rect) {
     const below = window.innerHeight - rect.bottom;
-    const right = `${Math.max(8, window.innerWidth - rect.right)}px`;
+    // Pela setinha: alinha à direita dela. Pelo toque: centraliza no dedo, sem sair da tela.
+    const x: Record<string, string> = point
+      ? { left: `${Math.min(Math.max(8, point.x - MENU_WIDTH / 2), window.innerWidth - MENU_WIDTH - 8)}px`, right: 'auto' }
+      : { right: `${Math.max(8, window.innerWidth - rect.right)}px` };
     menuStyle.value =
       below < MENU_HEIGHT && rect.top > below
-        ? { bottom: `${window.innerHeight - rect.top + 4}px`, right }
-        : { top: `${rect.bottom + 4}px`, right };
+        ? { bottom: `${window.innerHeight - rect.top + 4}px`, ...x }
+        : { top: `${rect.bottom + 4}px`, ...x };
   }
   menuOpen.value = true;
+}
+
+const press = useLongPress((point) => toggleMenu(point));
+
+function open() {
+  if (!press.consumeClick()) emit('open', props.conv.id);
 }
 
 // Rolou a lista ou mudou o tamanho da janela: fecha (a posição fixa ficaria errada).
@@ -136,7 +147,17 @@ async function toggleBlock() {
 
 <template>
   <div ref="root" class="conv-row">
-    <button class="conv-item" :class="{ active }" type="button" @click="emit('open', conv.id)">
+    <button
+      class="conv-item"
+      :class="{ active }"
+      type="button"
+      @click="open"
+      @touchstart.passive="press.onTouchstart"
+      @touchmove.passive="press.onTouchmove"
+      @touchend="press.onTouchend"
+      @touchcancel="press.onTouchcancel"
+      @contextmenu="press.onContextmenu"
+    >
       <Avatar
         :name="chat.conversationTitle(conv)"
         :seed="conv.id"
@@ -173,7 +194,7 @@ async function toggleBlock() {
       type="button"
       aria-label="Mais opções"
       :aria-expanded="menuOpen"
-      @click.stop="toggleMenu"
+      @click.stop="toggleMenu()"
     >
       <ChevronDown :size="18" :stroke-width="2" />
     </button>

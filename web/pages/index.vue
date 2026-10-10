@@ -1,9 +1,9 @@
 <script setup lang="ts">
-import { Plus, ShieldCheck } from '@lucide/vue';
+import { MessageCircle, MonitorSmartphone, Plus, Settings, ShieldCheck, UsersRound } from '@lucide/vue';
 
 const auth = useAuth();
 const { me } = auth;
-const { activeId, activeConversation, connect, loadConversations, loadArchived } = useChat();
+const { activeId, activeConversation, connect, loadConversations, loadArchived, conversationTitle, conversations } = useChat();
 
 const showNew = ref(false);
 const newMode = ref<'direct' | 'group' | 'contact'>('direct');
@@ -81,7 +81,17 @@ async function start() {
 
 onMounted(start);
 
-useHead(() => ({ title: activeConversation.value ? `${activeConversation.value.title ?? 'Chat'} · Chat` : 'Chat' }));
+// Celular (fora de uma conversa): barra de abas embaixo, como num app.
+const showDevices = ref(false);
+const tab = computed(() => (showSettings.value ? 'settings' : showNew.value && newMode.value === 'direct' ? 'contacts' : 'chats'));
+const unreadTotal = computed(() => conversations.value.reduce((n, c) => n + (c.unreadCount > 0 ? 1 : 0), 0));
+function goTab(t: 'chats' | 'contacts' | 'settings') {
+  showSettings.value = t === 'settings';
+  if (t === 'contacts') openNew('direct');
+  else showNew.value = false;
+}
+
+useHead(() => ({ title: activeConversation.value ? `${conversationTitle(activeConversation.value)} · Chat` : 'Chat' }));
 </script>
 
 <template>
@@ -120,6 +130,26 @@ useHead(() => ({ title: activeConversation.value ? `${activeConversation.value.t
     <SearchPanel v-else-if="rightPanel === 'search' && activeId" :conversation-id="activeId" @close="rightPanel = null" />
     <GroupInfoDialog v-if="showInfo && activeId" :conversation-id="activeId" :start-adding="groupStartAdding" @close="showInfo = false" />
     <CallOverlay />
+
+    <nav v-if="!activeId" class="tabbar" aria-label="Navegação">
+      <button type="button" :class="{ active: tab === 'chats' }" @click="goTab('chats')">
+        <span class="tabbar-icon"><MessageCircle :size="22" :stroke-width="1.9" /><span v-if="unreadTotal" class="tabbar-badge">{{ unreadTotal }}</span></span>
+        Conversas
+      </button>
+      <button type="button" :class="{ active: tab === 'contacts' }" @click="goTab('contacts')">
+        <span class="tabbar-icon"><UsersRound :size="22" :stroke-width="1.9" /></span>
+        Contatos
+      </button>
+      <button type="button" @click="showDevices = true">
+        <span class="tabbar-icon"><MonitorSmartphone :size="22" :stroke-width="1.9" /></span>
+        Computador
+      </button>
+      <button type="button" :class="{ active: tab === 'settings' }" @click="goTab('settings')">
+        <span class="tabbar-icon"><Settings :size="22" :stroke-width="1.9" /></span>
+        Ajustes
+      </button>
+    </nav>
+    <DevicesDialog v-if="showDevices" @close="showDevices = false" />
   </div>
 
   <div v-else class="splash">
