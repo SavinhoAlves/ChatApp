@@ -1,0 +1,34 @@
+import type { CapacitorConfig } from '@capacitor/cli';
+
+// App nativo (iPhone) do Chat. O app abre o servidor do Chat por dentro (server.url): telas, API e
+// tempo real continuam na mesma origem, e mudanças de visual chegam sem publicar versão nova na loja.
+// Os plugins nativos (barra de status, notificações…) funcionam porque o Capacitor injeta a ponte na página.
+//
+// CHAT_SERVER_URL troca o endereço no build (ex.: quando tiver domínio próprio).
+const serverUrl = process.env.CHAT_SERVER_URL || 'https://chat.66-70-214-163.sslip.io';
+
+const config: CapacitorConfig = {
+  // Identificador único do app na Apple. Depois do primeiro envio ao App Store Connect não muda mais.
+  appId: 'com.savioalves.chat',
+  appName: 'Chat',
+  // Arquivos guardados dentro do app: só a página de "sem conexão" é usada (ver errorPath).
+  webDir: '.output/public',
+  backgroundColor: '#050b0a',
+  server: {
+    url: serverUrl,
+    // Só o próprio servidor abre dentro do app; outros links (mapa, sites) vão para o Safari.
+    allowNavigation: [new URL(serverUrl).hostname],
+    // Sem internet ou servidor fora do ar: página guardada no próprio app (public/offline.html).
+    errorPath: 'offline.html',
+  },
+  ios: {
+    // O CSS já cuida das áreas do notch e da barra de baixo (env(safe-area-inset-*)).
+    contentInset: 'never',
+  },
+  plugins: {
+    // App escuro: texto branco na barra de status.
+    StatusBar: { style: 'DARK', overlaysWebView: true },
+  },
+};
+
+export default config;

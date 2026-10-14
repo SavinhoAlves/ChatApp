@@ -4,7 +4,13 @@
  */
 export const isDesktopDevice = () => import.meta.client && window.matchMedia('(min-width: 900px) and (pointer: fine)').matches;
 
-/** Aberto como app instalado (PWA na tela inicial), e não numa aba do navegador. */
+/** Rodando dentro do app nativo (Capacitor, iPhone). */
+export const isNativeApp = () =>
+  import.meta.client && !!(window as Window & { Capacitor?: { isNativePlatform?: () => boolean } }).Capacitor?.isNativePlatform?.();
+
+/** Aberto como app (nativo ou PWA na tela inicial), e não numa aba do navegador. */
 export const isInstalledApp = () =>
   import.meta.client &&
-  (window.matchMedia('(display-mode: standalone)').matches || (navigator as Navigator & { standalone?: boolean }).standalone === true);
+  (isNativeApp() ||
+    window.matchMedia('(display-mode: standalone)').matches ||
+    (navigator as Navigator & { standalone?: boolean }).standalone === true);

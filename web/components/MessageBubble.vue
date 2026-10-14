@@ -235,7 +235,7 @@ function act(name: 'reply' | 'edit' | 'remove') {
           <span class="bubble-file-icon"><FileIcon :size="18" :stroke-width="1.8" /></span>
           <span class="bubble-file-info">
             <strong>{{ message.attachment.name }}</strong>
-            <small>{{ formatBytes(message.attachment.size) }}</small>
+            <small>{{ formatBytes(message.attachment.size ?? 0) }}</small>
           </span>
         </a>
         <div v-if="callLink" class="bubble-call">

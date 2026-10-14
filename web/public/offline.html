@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>Chat</title>
+    <!-- App nativo (Capacitor): aparece quando o servidor não abre (sem internet ou fora do ar). -->
+    <style>
+      html,
+      body {
+        height: 100%;
+        margin: 0;
+        background: #050b0a;
+        color: #e5efec;
+        font-family: ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+      }
+      main {
+        display: grid;
+        place-content: center;
+        justify-items: center;
+        gap: 10px;
+        height: 100%;
+        padding: 24px;
+        text-align: center;
+      }
+      img {
+        width: 84px;
+        margin-bottom: 8px;
+      }
+      h1 {
+        margin: 0;
+        font-size: 22px;
+      }
+      p {
+        max-width: 280px;
+        margin: 0 0 14px;
+        color: #8da49e;
+        line-height: 1.5;
+      }
+      button {
+        height: 48px;
+        padding: 0 28px;
+        border: 0;
+        border-radius: 14px;
+        background: linear-gradient(135deg, #5eead4, #14b8a6);
+        color: #04201c;
+        font: inherit;
+        font-weight: 700;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <img src="/icon-512.png" alt="" />
+      <h1>Sem conexão</h1>
+      <p>Não foi possível abrir o Chat. Verifique a internet e tente de novo.</p>
+      <button type="button" onclick="retry()">Tentar de novo</button>
+    </main>
+    <script>
+      function retry() {
+        var url = window.Capacitor && window.Capacitor.getServerUrl ? window.Capacitor.getServerUrl() : null;
+        if (url) window.location.href = url;
+        else window.location.reload();
+      }
+    </script>
+  </body>
+</html>
