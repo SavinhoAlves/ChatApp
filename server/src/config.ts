@@ -15,6 +15,10 @@ const parsed = z
     JWT_SECRET: z.string().min(32, 'JWT_SECRET precisa ter pelo menos 32 caracteres'),
     CORS_ORIGINS: z.string().default(''),
     REGISTRATION_OPEN: z.enum(['true', 'false']).default('true'),
+    // Número "master" (dono do servidor), em E.164 (ex.: +5511999999999): apaga qualquer mensagem para todos,
+    // sem prazo. Os demais só apagam as próprias e dentro de DELETE_FOR_ALL_MINUTES.
+    MASTER_PHONE: z.preprocess(emptyToUndefined, z.string().optional()),
+    DELETE_FOR_ALL_MINUTES: z.coerce.number().int().min(1).default(60),
     // Pasta do front-end já compilado (nuxt generate). Se não existir, a API roda sozinha.
     WEB_DIST: z.string().default('../web/.output/public'),
     // Pasta onde fotos/áudios/arquivos enviados no chat são salvos.
@@ -71,6 +75,8 @@ export const config = {
     .map((s) => s.trim())
     .filter(Boolean),
   registrationOpen: env.REGISTRATION_OPEN === 'true',
+  masterPhone: env.MASTER_PHONE?.replace(/[^\d+]/g, ''),
+  deleteForAllMinutes: env.DELETE_FOR_ALL_MINUTES,
   webDist: resolve(process.cwd(), env.WEB_DIST),
   uploadDir: resolve(process.cwd(), env.UPLOAD_DIR),
   sms: {

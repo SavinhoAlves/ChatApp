@@ -5009,3 +5009,150 @@ html[data-accent='roxo'] body {
     width: 52px;
   }
 }
+
+/* ---------- Mensagens: encaminhada, estrela, arrastar, fixada, apagar e dados ---------- */
+.bubble-forwarded {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-bottom: 2px;
+  color: var(--muted);
+  font-size: 12px;
+  font-style: italic;
+}
+
+.meta-star {
+  color: #facc15;
+}
+
+.bubble {
+  transition: transform 0.18s var(--ease);
+}
+
+.swipe-hint {
+  position: absolute;
+  top: 50%;
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background: var(--glass-strong);
+  color: var(--accent);
+  transform: translateY(-50%);
+  pointer-events: none;
+}
+
+.swipe-hint.reply {
+  left: -42px;
+}
+
+.swipe-hint.info {
+  right: -42px;
+}
+
+.pinned-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 8px 8px 14px;
+  border-bottom: 1px solid var(--glass-border);
+  background: rgb(var(--bg-rgb) / 0.6);
+  backdrop-filter: blur(14px);
+  cursor: pointer;
+}
+
+.pinned-icon {
+  flex: none;
+  color: var(--accent);
+}
+
+.pinned-text {
+  display: grid;
+  flex: 1;
+  min-width: 0;
+  font-size: 13.5px;
+}
+
+.pinned-text small {
+  color: var(--accent);
+  font-size: 11.5px;
+  font-weight: 600;
+}
+
+.pinned-text span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.delete-sheet {
+  padding: 18px 18px max(18px, env(safe-area-inset-bottom));
+}
+
+.delete-sheet h2 {
+  margin: 4px 0 10px;
+  font-size: 18px;
+  text-align: center;
+}
+
+.delete-note {
+  margin: 0 0 12px;
+  color: var(--muted);
+  font-size: 13.5px;
+  line-height: 1.45;
+  text-align: center;
+}
+
+.delete-actions {
+  display: grid;
+  gap: 8px;
+}
+
+.delete-actions .btn {
+  height: 46px;
+}
+
+.danger-text {
+  color: var(--danger);
+}
+
+.msg-info-preview {
+  margin: 0 0 12px;
+  padding: 10px 12px;
+  border-radius: 14px;
+  background: var(--glass);
+  overflow-wrap: anywhere;
+}
+
+.msg-info-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 14px 0 4px;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.msg-info-title.read {
+  color: var(--read);
+}
+
+.msg-info-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 6px 0;
+  font-size: 14px;
+}
+
+.msg-info-row time {
+  color: var(--muted);
+}
+
+/* Figurinhas: segurar não abre o menu do sistema (copiar imagem) no lugar do nosso */
+.sticker-btn img,
+.bubble-sticker {
+  -webkit-touch-callout: none;
+  user-select: none;
+}

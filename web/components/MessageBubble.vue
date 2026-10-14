@@ -1,5 +1,26 @@
 <script setup lang="ts">
-import { Ban, Check, Copy, File as FileIcon, MapPin, MoreVertical, Pencil, Phone, Radio, Reply, RotateCw, Star, Timer, Trash2, Video } from '@lucide/vue';
+import {
+  Ban,
+  Check,
+  Copy,
+  File as FileIcon,
+  Forward,
+  Info,
+  MapPin,
+  MoreVertical,
+  Pencil,
+  Phone,
+  Pin,
+  PinOff,
+  Radio,
+  Reply,
+  RotateCw,
+  Star,
+  StarOff,
+  Timer,
+  Trash2,
+  Video,
+} from '@lucide/vue';
 import type { Message } from '~/types';
 
 const props = defineProps<{
@@ -29,6 +50,8 @@ const emit = defineEmits<{
   'contact-open': [userId: string];
   'toggle-select': [message: Message];
   'join-call': [callId: string];
+  forward: [message: Message];
+  info: [message: Message];
 }>();
 
 // Mensagem com link de ligação ("Enviar link de ligação"): mostra um cartão com botão para entrar.
@@ -134,11 +157,66 @@ async function toggleFavorite() {
   }
 }
 
-function act(name: 'reply' | 'edit' | 'remove') {
+function act(name: 'reply' | 'edit' | 'remove' | 'forward' | 'info') {
   menuOpen.value = false;
   if (name === 'reply') emit('reply', props.message);
   else if (name === 'edit') emit('edit', props.message);
+  else if (name === 'forward') emit('forward', props.message);
+  else if (name === 'info') emit('info', props.message);
   else emit('remove', props.message);
+}
+
+// Favoritar (estrela) e fixar no topo da conversa.
+const isPinned = computed(() => chat.activeConversation.value?.pinnedMessage?.id === props.message.id);
+const canForward = computed(() => !!props.message.body || (!!props.message.attachment && props.message.attachment.type !== 'LOCATION'));
+async function toggleStar() {
+  menuOpen.value = false;
+  await chat.setStar(props.message, !props.message.starred).catch(() => {});
+}
+async function togglePin() {
+  menuOpen.value = false;
+  await chat.pinMessage(props.message.conversationId, isPinned.value ? null : props.message.id).catch(() => {});
+}
+
+// Arrastar a mensagem (celular): para a direita responde; para a esquerda abre os dados (só nas suas).
+const SWIPE_TRIGGER = 64;
+const swipeX = ref(0);
+let swipeStart: { x: number; y: number } | null = null;
+let swiping = false;
+function onTouchstart(e: TouchEvent) {
+  press.onTouchstart(e);
+  const t = e.touches[0];
+  swipeStart = t && canAct.value && !props.selecting ? { x: t.clientX, y: t.clientY } : null;
+  swiping = false;
+}
+function onTouchmove(e: TouchEvent) {
+  press.onTouchmove(e);
+  const t = e.touches[0];
+  if (!swipeStart || !t) return;
+  const dx = t.clientX - swipeStart.x;
+  const dy = t.clientY - swipeStart.y;
+  if (!swiping) {
+    // Só vira arrasto lateral se o dedo andou mais para o lado do que para cima/baixo (senão é rolagem).
+    if (Math.abs(dx) < 12 || Math.abs(dx) < Math.abs(dy) * 1.5) return;
+    swiping = true;
+  }
+  const allowed = dx > 0 || props.mine ? dx : 0;
+  swipeX.value = Math.max(-90, Math.min(90, allowed));
+}
+function onTouchend() {
+  press.onTouchend();
+  if (swiping) {
+    if (swipeX.value >= SWIPE_TRIGGER) {
+      navigator.vibrate?.(10);
+      emit('reply', props.message);
+    } else if (swipeX.value <= -SWIPE_TRIGGER && props.mine) {
+      navigator.vibrate?.(10);
+      emit('info', props.message);
+    }
+  }
+  swipeStart = null;
+  swiping = false;
+  swipeX.value = 0;
 }
 </script>
 
@@ -158,12 +236,17 @@ function act(name: 'reply' | 'edit' | 'remove') {
     <div
       class="bubble"
       :class="{ deleted: message.deleted, failed: message.status === 'failed', sticker: !message.deleted && message.attachment?.type === 'STICKER' }"
-      @touchstart.passive="press.onTouchstart"
-      @touchmove.passive="press.onTouchmove"
-      @touchend="press.onTouchend"
-      @touchcancel="press.onTouchcancel"
+      :style="swipeX ? { transform: `translateX(${swipeX}px)`, transition: 'none' } : undefined"
+      @touchstart.passive="onTouchstart"
+      @touchmove.passive="onTouchmove"
+      @touchend="onTouchend"
+      @touchcancel="onTouchend"
       @contextmenu="press.onContextmenu"
     >
+      <span v-if="swipeX" class="swipe-hint" :class="swipeX > 0 ? 'reply' : 'info'" :style="{ opacity: Math.min(1, Math.abs(swipeX) / SWIPE_TRIGGER) }">
+        <Reply v-if="swipeX > 0" :size="18" :stroke-width="2.2" />
+        <Info v-else :size="18" :stroke-width="2.2" />
+      </span>
       <div v-if="senderName" class="bubble-sender" :style="senderColor ? { color: senderColor } : undefined">
         {{ senderName }}
         <span v-if="senderBadge" class="sender-badge">⚡ {{ senderBadge }}</span>
@@ -173,6 +256,8 @@ function act(name: 'reply' | 'edit' | 'remove') {
         <strong>{{ replyName }}</strong>
         <span>{{ message.replyTo.deleted ? 'Mensagem apagada' : message.replyTo.body }}</span>
       </div>
+
+      <div v-if="message.forwarded && !message.deleted" class="bubble-forwarded"><Forward :size="13" :stroke-width="2.2" /> Encaminhada</div>
 
       <p v-if="message.deleted" class="bubble-body muted-text"><Ban :size="14" :stroke-width="2" /> Mensagem apagada</p>
       <template v-else>
@@ -251,6 +336,7 @@ function act(name: 'reply' | 'edit' | 'remove') {
 
       <div class="bubble-meta">
         <Timer v-if="message.expiresAt && !message.deleted" :size="11" :stroke-width="2.4" class="meta-timer" aria-label="Mensagem temporária" />
+        <Star v-if="message.starred && !message.deleted" :size="11" :stroke-width="2.4" fill="currentColor" class="meta-star" aria-label="Favoritada" />
         <span v-if="message.editedAt && !message.deleted">editada</span>
         <time>{{ formatTime(message.createdAt) }}</time>
         <StatusTicks v-if="mine && !message.deleted" :status="message.status" />
@@ -262,12 +348,24 @@ function act(name: 'reply' | 'edit' | 'remove') {
 
       <div v-if="menuOpen" class="menu" role="menu">
         <button class="menu-item" role="menuitem" type="button" @click="act('reply')"><Reply :size="15" :stroke-width="2" /> Responder</button>
+        <button v-if="canForward" class="menu-item" role="menuitem" type="button" @click="act('forward')"><Forward :size="15" :stroke-width="2" /> Encaminhar</button>
+        <button v-if="mine" class="menu-item" role="menuitem" type="button" @click="act('info')"><Info :size="15" :stroke-width="2" /> Dados</button>
+        <button class="menu-item" role="menuitem" type="button" @click="toggleStar">
+          <StarOff v-if="message.starred" :size="15" :stroke-width="2" />
+          <Star v-else :size="15" :stroke-width="2" />
+          {{ message.starred ? 'Desfavoritar' : 'Favoritar' }}
+        </button>
+        <button class="menu-item" role="menuitem" type="button" @click="togglePin">
+          <PinOff v-if="isPinned" :size="15" :stroke-width="2" />
+          <Pin v-else :size="15" :stroke-width="2" />
+          {{ isPinned ? 'Desafixar' : 'Fixar na conversa' }}
+        </button>
         <button v-if="canCopy" class="menu-item" role="menuitem" type="button" @click="copyText"><Copy :size="15" :stroke-width="2" /> Copiar</button>
         <button v-if="isSticker" class="menu-item" role="menuitem" type="button" @click="toggleFavorite">
-          <Star :size="15" :stroke-width="2" /> {{ favorite ? 'Remover das favoritas' : 'Adicionar às favoritas' }}
+          <Star :size="15" :stroke-width="2" /> {{ favorite ? 'Remover das figurinhas' : 'Salvar figurinha' }}
         </button>
-        <button v-if="mine && !isSticker" class="menu-item" role="menuitem" type="button" @click="act('edit')"><Pencil :size="15" :stroke-width="2" /> Editar</button>
-        <button v-if="mine" class="menu-item danger" role="menuitem" type="button" @click="act('remove')"><Trash2 :size="15" :stroke-width="2" /> Apagar para todos</button>
+        <button v-if="mine && !isSticker && message.body" class="menu-item" role="menuitem" type="button" @click="act('edit')"><Pencil :size="15" :stroke-width="2" /> Editar</button>
+        <button class="menu-item danger" role="menuitem" type="button" @click="act('remove')"><Trash2 :size="15" :stroke-width="2" /> Apagar</button>
       </div>
     </div>
 

@@ -54,6 +54,8 @@ model User {
   phoneContacts  PhoneContact[]
   stickers       UserSticker[]
   pushDevices    PushDevice[]
+  hiddenMessages MessageHidden[]
+  starred        MessageStar[]
   chatLists      ChatList[]
   reportsMade    Report[]         @relation("ReportsMade")
   reportsAgainst Report[]         @relation("ReportsAgainst")
@@ -70,6 +72,10 @@ model Conversation {
   lastMessageAt    DateTime         @default(now())
   // Mensagens temporárias: novas mensagens somem para todos depois deste tempo (null = desativado).
   disappearSeconds Int?
+  // Mensagem fixada no topo da conversa (para todos). Guarda uma prévia para mostrar sem carregar a mensagem.
+  pinnedMessageId  String?
+  pinnedPreview    String?
+  pinnedSenderId   String?
 
   participants Participant[]
   messages     Message[]
@@ -113,6 +119,8 @@ model Message {
   deletedAt      DateTime?
   // Mensagem temporária: o servidor apaga para todos quando passar deste horário.
   expiresAt      DateTime?
+  // "Encaminhada": reenviada de outra conversa.
+  forwarded      Boolean   @default(false)
 
   // Mídia opcional (imagem, vídeo, áudio ou arquivo). Uma mensagem pode ter só anexo, só texto, ou os dois.
   attachmentType AttachmentType?
@@ -136,8 +144,36 @@ model Message {
   replyTo      Message?         @relation("Replies", fields: [replyToId], references: [id], onDelete: SetNull)
   replies      Message[]        @relation("Replies")
   receipts     MessageReceipt[]
+  hiddenFor    MessageHidden[]
+  stars        MessageStar[]
 
   @@index([conversationId, createdAt])
+}
+
+// "Apagar para mim": a mensagem some só para essa pessoa.
+model MessageHidden {
+  messageId String
+  userId    String
+  createdAt DateTime @default(now())
+
+  message Message @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([messageId, userId])
+  @@index([userId])
+}
+
+// Mensagens favoritas (estrela), de cada pessoa.
+model MessageStar {
+  messageId String
+  userId    String
+  createdAt DateTime @default(now())
+
+  message Message @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([messageId, userId])
+  @@index([userId, createdAt])
 }
 
 // Uma linha por destinatário de cada mensagem: controla entregue/lido e o contador de não lidas.

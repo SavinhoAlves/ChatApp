@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ArrowLeft, Ban, Camera, Check, ChevronDown, Copy, File, FileText, Images, MapPin, Mic, Phone, Plus, Search, Send, ShieldAlert, Smile, Store, Timer, Trash2, Upload, UserPlus, UserRound, Video, X } from '@lucide/vue';
+import { ArrowLeft, Ban, Pin, Camera, Check, ChevronDown, Copy, File, FileText, Images, MapPin, Mic, Phone, Plus, Search, Send, ShieldAlert, Smile, Store, Timer, Trash2, Upload, UserPlus, UserRound, Video, X } from '@lucide/vue';
 import type { StickerRef } from '~/composables/useStickers';
 import type { Attachment, Message, User } from '~/types';
 import { formatPhone } from '~/utils/phone';
@@ -63,7 +63,7 @@ function toggleSelected(m: Message) {
   selectedIds.value = selectedIds.value.includes(m.id) ? selectedIds.value.filter((id) => id !== m.id) : [...selectedIds.value, m.id];
 }
 const selectedMessages = computed(() => list.value.filter((m) => selectedIds.value.includes(m.id)));
-const canDeleteSelected = computed(() => selectedMessages.value.length > 0 && selectedMessages.value.every((m) => m.senderId === me.value?.id && !m.deleted));
+const canDeleteSelected = computed(() => selectedMessages.value.length > 0 && selectedMessages.value.every((m) => !m.deleted));
 
 async function copySelected() {
   const text = selectedMessages.value
@@ -79,16 +79,36 @@ async function copySelected() {
   stopSelecting();
 }
 
-async function deleteSelected() {
-  const n = selectedMessages.value.length;
-  const ok = await confirm({ message: `Apagar ${n > 1 ? `${n} mensagens` : 'esta mensagem'} para todos?`, confirmLabel: 'Apagar', danger: true });
-  if (!ok) return;
-  try {
-    for (const m of selectedMessages.value) await chat.deleteMessage(m);
-  } catch (e) {
-    flash((e as Error).message);
-  }
-  stopSelecting();
+function deleteSelected() {
+  deleting.value = [...selectedMessages.value];
+}
+
+// "Apagar": janela com "Apagar para mim" / "Apagar para todos" (este último com prazo; master sem prazo).
+const deleting = ref<Message[] | null>(null);
+function onDeleted(error?: string) {
+  deleting.value = null;
+  if (error) flash(error);
+  if (selecting.value) stopSelecting();
+}
+
+// Encaminhar e Dados da mensagem.
+const forwarding = ref<Message | null>(null);
+const infoFor = ref<Message | null>(null);
+function onForward(ids: string[]) {
+  const m = forwarding.value;
+  forwarding.value = null;
+  if (!m) return;
+  chat.forward(m, ids);
+  flash(ids.length > 1 ? `Encaminhada para ${ids.length} conversas` : 'Mensagem encaminhada');
+}
+
+// Mensagem fixada: tocar leva até ela; o X desafixa.
+function goToPinned() {
+  const pinned = conv.value?.pinnedMessage;
+  if (pinned && conv.value) void chat.jumpToMessage(conv.value.id, pinned.id);
+}
+async function unpin() {
+  if (conv.value) await chat.pinMessage(conv.value.id, null).catch((e) => flash((e as Error).message));
 }
 
 // ---- Resultado da pesquisa: rola até a mensagem e pisca ----
@@ -654,14 +674,8 @@ function cancelCompose() {
   nextTick(autosize);
 }
 
-async function remove(message: Message) {
-  const ok = await confirm({ message: 'Apagar esta mensagem para todos?', confirmLabel: 'Apagar', danger: true });
-  if (!ok) return;
-  try {
-    await chat.deleteMessage(message);
-  } catch (e) {
-    flash((e as Error).message);
-  }
+function remove(message: Message) {
+  deleting.value = [message];
 }
 
 onBeforeUnmount(() => {
@@ -747,6 +761,15 @@ const replyPreviewName = computed(() => (replyTo.value && conv.value ? chat.user
       </div>
     </header>
 
+    <div v-if="conv.pinnedMessage" class="pinned-bar" role="button" tabindex="0" @click="goToPinned" @keydown.enter="goToPinned">
+      <Pin :size="15" :stroke-width="2.2" class="pinned-icon" />
+      <span class="pinned-text">
+        <small>Mensagem fixada</small>
+        <span>{{ conv.pinnedMessage.preview }}</span>
+      </span>
+      <button class="icon-btn" type="button" aria-label="Desafixar" title="Desafixar" @click.stop="unpin"><X :size="16" /></button>
+    </div>
+
     <div v-if="conv.disappearSeconds" class="temp-banner">
       <Timer :size="14" :stroke-width="2" /> Mensagens temporárias ativadas: novas mensagens somem após {{ disappearLabel }}.
     </div>
@@ -802,6 +825,8 @@ const replyPreviewName = computed(() => (replyTo.value && conv.value ? chat.user
           @reply="startReply"
           @edit="startEdit"
           @remove="remove"
+          @forward="forwarding = $event"
+          @info="infoFor = $event"
           @retry="chat.retry"
           @contact-open="onContactOpen"
         />
@@ -815,7 +840,7 @@ const replyPreviewName = computed(() => (replyTo.value && conv.value ? chat.user
       <strong>{{ selectedIds.length }} {{ selectedIds.length === 1 ? 'selecionada' : 'selecionadas' }}</strong>
       <span class="select-bar-actions">
         <button class="icon-btn" type="button" title="Copiar" aria-label="Copiar" :disabled="!selectedIds.length" @click="copySelected"><Copy :size="19" /></button>
-        <button class="icon-btn" type="button" title="Apagar para todos (só as suas)" aria-label="Apagar" :disabled="!canDeleteSelected" @click="deleteSelected"><Trash2 :size="19" /></button>
+        <button class="icon-btn" type="button" title="Apagar" aria-label="Apagar" :disabled="!canDeleteSelected" @click="deleteSelected"><Trash2 :size="19" /></button>
       </span>
     </footer>
 
@@ -928,6 +953,9 @@ const replyPreviewName = computed(() => (replyTo.value && conv.value ? chat.user
     </footer>
 
     <CameraDialog v-if="showCamera" @close="showCamera = false" @captured="onCameraCaptured" />
+    <DeleteMessagesDialog v-if="deleting" :messages="deleting" @close="deleting = null" @done="onDeleted" />
+    <SendToDialog v-if="forwarding" title="Encaminhar para…" @close="forwarding = null" @pick="onForward" />
+    <MessageInfoDialog v-if="infoFor" :message="infoFor" @close="infoFor = null" />
     <LocationDialog v-if="showLocation && conv" :conversation-id="conv.id" @close="showLocation = false" />
     <ShareContactDialog v-if="showContact" @close="showContact = false" @pick="onContactPicked" />
     <DisappearingDialog v-if="showDisappearing" :conversation="conv" @close="showDisappearing = false" />

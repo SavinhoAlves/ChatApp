@@ -18,9 +18,11 @@ import {
   notifyConversationChanged,
   sendMessage,
   setConversationPrefs,
+  pinMessage,
 } from '../services/chat.js';
 
 const idParam = z.object({ id: z.string().min(1) });
+const pinSchema = z.object({ messageId: z.string().min(1).nullish() });
 const memberParam = z.object({ id: z.string().min(1), userId: z.string().min(1) });
 
 // Por id (contato da lista) ou por telefone (qualquer pessoa que use o Zynko, mesmo fora dos contatos).
@@ -182,6 +184,14 @@ export async function conversationRoutes(app: FastifyInstance) {
   });
 
   // "Apagar conversa" (1:1): some da lista de quem apagou; a outra pessoa não é afetada.
+  // Fixar uma mensagem no topo da conversa (para todos). messageId null = desafixar.
+  app.put('/conversations/:id/pin', auth, async (request) => {
+    const { id } = validate(idParam, request.params);
+    const { messageId } = validate(pinSchema, request.body ?? {});
+    await pinMessage(request.user.sub, id, messageId ?? null);
+    return { conversation: await getConversation(id, request.user.sub) };
+  });
+
   app.delete('/conversations/:id', auth, async (request) => {
     const { id } = validate(idParam, request.params);
     await hideConversation(request.user.sub, id);

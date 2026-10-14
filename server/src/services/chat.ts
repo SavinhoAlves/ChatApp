@@ -30,6 +30,7 @@ export const userSelect = {
 export const messageInclude = {
   receipts: { select: { userId: true, deliveredAt: true, readAt: true } },
   replyTo: { select: { id: true, senderId: true, body: true, deletedAt: true } },
+  stars: { select: { userId: true } },
 } satisfies Prisma.MessageInclude;
 
 type MessageFull = Prisma.MessageGetPayload<{ include: typeof messageInclude }>;
@@ -106,6 +107,8 @@ export function serializeMessage(m: MessageFull, viewerId: string) {
       : null,
     // Só quem enviou vê o status de entrega/leitura.
     status: m.senderId === viewerId ? statusOf(m.receipts) : null,
+    forwarded: m.forwarded,
+    starred: m.stars.some((s) => s.userId === viewerId),
   };
 }
 
@@ -263,6 +266,7 @@ export async function sendMessage(input: {
   replyToId?: string | null;
   clientId?: string;
   attachment?: AttachmentInput | null;
+  forwarded?: boolean;
 }) {
   const memberIds = await getMemberIds(input.conversationId);
   if (!memberIds.includes(input.senderId)) throw new HttpError(404, 'Conversa não encontrada');
@@ -297,6 +301,7 @@ export async function sendMessage(input: {
         senderId: input.senderId,
         body: input.body,
         replyToId,
+        forwarded: !!input.forwarded,
         ...attachmentFields,
         expiresAt: conversation?.disappearSeconds ? new Date(Date.now() + conversation.disappearSeconds * 1000) : null,
         receipts: {
@@ -390,12 +395,48 @@ export async function editMessage(userId: string, messageId: string, body: strin
   return message ? serializeMessage(message, userId) : null;
 }
 
-export async function deleteMessage(userId: string, messageId: string) {
-  const existing = await prisma.message.findUnique({
+/** Número master (MASTER_PHONE): apaga qualquer mensagem para todos, sem prazo. */
+export async function isMaster(userId: string) {
+  if (!config.masterPhone) return false;
+  const user = await prisma.user.findUnique({ where: { id: userId }, select: { phone: true } });
+  return user?.phone === config.masterPhone;
+}
+
+/** Mensagem de uma conversa da qual a pessoa participa (senão, "não encontrada"). */
+async function memberMessage(userId: string, messageId: string) {
+  const m = await prisma.message.findUnique({
     where: { id: messageId },
-    select: { senderId: true, conversationId: true, deletedAt: true, attachmentUrl: true },
+    select: { id: true, senderId: true, conversationId: true, createdAt: true, deletedAt: true, attachmentUrl: true, body: true, attachmentType: true },
   });
-  if (!existing || existing.senderId !== userId) throw new HttpError(404, 'Mensagem não encontrada');
+  if (!m) throw new HttpError(404, 'Mensagem não encontrada');
+  await assertMember(m.conversationId, userId);
+  return m;
+}
+
+/** "Apagar para mim": some só para esta pessoa (a conversa dos outros não muda). */
+export async function hideMessage(userId: string, messageId: string) {
+  const m = await memberMessage(userId, messageId);
+  await prisma.messageHidden.upsert({
+    where: { messageId_userId: { messageId, userId } },
+    create: { messageId, userId },
+    update: {},
+  });
+  emitToUsers([userId], 'message:removed', { conversationId: m.conversationId, messageId });
+}
+
+/**
+ * "Apagar para todos": quem enviou, até DELETE_FOR_ALL_MINUTES depois do envio. O master apaga qualquer
+ * mensagem das conversas em que está, a qualquer hora. Depois do prazo sobra só "Apagar para mim".
+ */
+export async function deleteMessage(userId: string, messageId: string) {
+  const existing = await memberMessage(userId, messageId);
+  const master = await isMaster(userId);
+  if (!master) {
+    if (existing.senderId !== userId) throw new HttpError(403, 'Você só pode apagar para todos as suas mensagens');
+    if (Date.now() - existing.createdAt.getTime() > config.deleteForAllMinutes * 60_000) {
+      throw new HttpError(403, 'O prazo para apagar para todos acabou. Use "Apagar para mim".');
+    }
+  }
   if (!existing.deletedAt) {
     // Apaga para todos: o texto e o anexo somem do banco e do disco, não só ficam escondidos.
     await prisma.message.update({
@@ -403,9 +444,74 @@ export async function deleteMessage(userId: string, messageId: string) {
       data: { deletedAt: new Date(), body: '', attachmentUrl: null, attachmentName: null, attachmentMime: null, attachmentSize: null },
     });
     await deleteAttachmentFile(existing.attachmentUrl);
+    // Estava fixada: sai do topo da conversa.
+    const unpinned = await prisma.conversation.updateMany({
+      where: { id: existing.conversationId, pinnedMessageId: messageId },
+      data: { pinnedMessageId: null, pinnedPreview: null, pinnedSenderId: null },
+    });
+    if (unpinned.count) notifyConversationChanged(existing.conversationId, await getMemberIds(existing.conversationId));
   }
   const memberIds = await getMemberIds(existing.conversationId);
   await broadcastMessage('message:updated', messageId, memberIds);
+}
+
+/** Favoritar (estrela) ou tirar dos favoritos. Só a própria pessoa vê. */
+export async function setStar(userId: string, messageId: string, starred: boolean) {
+  const m = await memberMessage(userId, messageId);
+  if (starred) {
+    await prisma.messageStar.upsert({ where: { messageId_userId: { messageId, userId } }, create: { messageId, userId }, update: {} });
+  } else {
+    await prisma.messageStar.deleteMany({ where: { messageId, userId } });
+  }
+  const full = await loadMessage(messageId);
+  if (full) emitToUsers([userId], 'message:updated', serializeMessage(full, userId));
+  return m.conversationId;
+}
+
+/** "Dados" da mensagem: quando foi entregue e lida por cada destinatário (só para quem enviou ou o master). */
+export async function messageInfo(userId: string, messageId: string) {
+  const m = await memberMessage(userId, messageId);
+  if (m.senderId !== userId && !(await isMaster(userId))) throw new HttpError(403, 'Só quem enviou vê os dados da mensagem');
+  const receipts = await prisma.messageReceipt.findMany({
+    where: { messageId },
+    select: { userId: true, deliveredAt: true, readAt: true, user: { select: { displayName: true, avatarUrl: true } } },
+  });
+  return {
+    sentAt: m.createdAt.toISOString(),
+    receipts: receipts.map((r) => ({
+      userId: r.userId,
+      displayName: r.user.displayName,
+      avatarUrl: r.user.avatarUrl,
+      deliveredAt: r.deliveredAt?.toISOString() ?? null,
+      readAt: r.readAt?.toISOString() ?? null,
+    })),
+  };
+}
+
+const PIN_PREVIEW: Record<string, string> = {
+  IMAGE: '📷 Foto',
+  VIDEO: '🎥 Vídeo',
+  AUDIO: '🎤 Áudio',
+  FILE: '📄 Documento',
+  LOCATION: '📍 Localização',
+  CONTACT: '👤 Contato',
+  STICKER: '💟 Figurinha',
+};
+
+/** Fixar uma mensagem no topo da conversa (para todos) ou desafixar (messageId = null). */
+export async function pinMessage(userId: string, conversationId: string, messageId: string | null) {
+  await assertMember(conversationId, userId);
+  let data: { pinnedMessageId: string | null; pinnedPreview: string | null; pinnedSenderId: string | null };
+  if (messageId) {
+    const m = await memberMessage(userId, messageId);
+    if (m.conversationId !== conversationId || m.deletedAt) throw new HttpError(404, 'Mensagem não encontrada');
+    const kind = m.attachmentType ? PIN_PREVIEW[m.attachmentType] : '';
+    data = { pinnedMessageId: m.id, pinnedPreview: (m.body || kind || 'Mensagem').slice(0, 140), pinnedSenderId: m.senderId };
+  } else {
+    data = { pinnedMessageId: null, pinnedPreview: null, pinnedSenderId: null };
+  }
+  await prisma.conversation.update({ where: { id: conversationId }, data });
+  notifyConversationChanged(conversationId, await getMemberIds(conversationId));
 }
 
 export async function listMessages(
@@ -422,7 +528,8 @@ export async function listMessages(
   if (participant?.clearedAt) createdAt.gt = participant.clearedAt;
 
   const rows = await prisma.message.findMany({
-    where: { conversationId, ...(Object.keys(createdAt).length ? { createdAt } : {}) },
+    // "Apagar para mim": some só para quem apagou.
+    where: { conversationId, hiddenFor: { none: { userId: viewerId } }, ...(Object.keys(createdAt).length ? { createdAt } : {}) },
     orderBy: { createdAt: 'desc' },
     take: opts.limit + 1,
     include: messageInclude,
@@ -567,6 +674,7 @@ function serializeConversation(
       },
     })),
     lastMessage: visibleLast ? serializeMessage(visibleLast, viewerId) : null,
+    pinnedMessage: c.pinnedMessageId ? { id: c.pinnedMessageId, preview: c.pinnedPreview ?? '', senderId: c.pinnedSenderId } : null,
     unreadCount: unread,
     archived: !!me?.archivedAt,
     pinned: !!me?.pinnedAt,

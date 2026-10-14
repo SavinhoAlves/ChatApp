@@ -197,8 +197,10 @@ export async function authRoutes(app: FastifyInstance) {
 
   // Inclui o próprio número (só o dono vê o dele aqui).
   app.get('/me', { preHandler: [app.authenticate] }, async (request) => {
-    const user = await prisma.user.findUnique({ where: { id: request.user.sub }, select: { ...userSelect, phone: true } });
-    if (!user) throw new HttpError(401, 'Sessão inválida');
+    const found = await prisma.user.findUnique({ where: { id: request.user.sub }, select: { ...userSelect, phone: true } });
+    if (!found) throw new HttpError(401, 'Sessão inválida');
+    // isMaster: apaga para todos sem prazo. deleteForAllMinutes: prazo dos demais para "Apagar para todos".
+    const user = { ...found, isMaster: !!config.masterPhone && found.phone === config.masterPhone, deleteForAllMinutes: config.deleteForAllMinutes };
     // Logins antigos foram emitidos com validade de 30 dias: troca por um token sem expiração da mesma sessão.
     const legacy = typeof (request.user as { exp?: number }).exp === 'number';
     return legacy ? { user, token: app.jwt.sign({ sub: user.id, sid: request.user.sid }) } : { user };

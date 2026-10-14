@@ -10,6 +10,9 @@ export interface User {
   /** Só vem no próprio perfil (/me) e na lista de bloqueados. */
   phone?: string | null;
   lastSeenAt: string;
+  /** Só no /me: número master (apaga para todos sem prazo) e o prazo dos demais, em minutos. */
+  isMaster?: boolean;
+  deleteForAllMinutes?: number;
 }
 
 // 'pending' e 'failed' existem só no app (mensagem ainda não confirmada pelo servidor).
@@ -62,6 +65,16 @@ export interface Message {
   replyTo: ReplyPreview | null;
   status: MessageStatus | null;
   clientId?: string;
+  /** Reenviada de outra conversa ("Encaminhada"). */
+  forwarded?: boolean;
+  /** Favoritada por mim (estrela). */
+  starred?: boolean;
+}
+
+/** "Dados" da mensagem: entregue e lida por destinatário. */
+export interface MessageInfo {
+  sentAt: string;
+  receipts: { userId: string; displayName: string; avatarUrl: string | null; deliveredAt: string | null; readAt: string | null }[];
 }
 
 export interface Participant {
@@ -78,6 +91,8 @@ export interface Conversation {
   lastMessageAt: string;
   participants: Participant[];
   lastMessage: Message | null;
+  /** Mensagem fixada no topo da conversa (para todos). */
+  pinnedMessage?: { id: string; preview: string; senderId: string | null } | null;
   unreadCount: number;
   archived: boolean;
   pinned: boolean;

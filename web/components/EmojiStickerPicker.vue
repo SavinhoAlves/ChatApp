@@ -79,6 +79,16 @@ async function onFiles(event: Event) {
   }
 }
 
+// Segurar a figurinha (celular) ou clique direito (computador): oferece remover das favoritas.
+const pressedId = ref<string | null>(null);
+const favPress = useLongPress(() => {
+  if (pressedId.value) void removeFavorite(pressedId.value);
+});
+function pressStart(id: string, e: TouchEvent) {
+  pressedId.value = id;
+  favPress.onTouchstart(e);
+}
+
 // Como no WhatsApp: segurar (ou clique direito) numa favorita oferece remover.
 async function removeFavorite(id: string) {
   const ok = await confirm({ message: 'Remover esta figurinha das favoritas?', confirmLabel: 'Remover', danger: true });
@@ -145,8 +155,12 @@ function jumpTo(id: string) {
             type="button"
             class="sticker-btn"
             title="Segure para remover"
-            @click="pickSticker({ id: `u-${f.id}`, url: f.url })"
-            @contextmenu.prevent="removeFavorite(f.id)"
+            @click="!favPress.consumeClick() && pickSticker({ id: `u-${f.id}`, url: f.url })"
+            @touchstart.passive="pressStart(f.id, $event)"
+            @touchmove.passive="favPress.onTouchmove"
+            @touchend="favPress.onTouchend"
+            @touchcancel="favPress.onTouchcancel"
+            @contextmenu="pressedId = f.id; favPress.onContextmenu($event)"
           >
             <img :src="f.url" alt="Figurinha favorita" width="88" height="88" loading="lazy" />
           </button>

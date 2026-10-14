@@ -1,5 +1,5 @@
 import { io, type Socket } from 'socket.io-client';
-import type { Attachment, AttachmentInput, Conversation, Message, MessageStatus } from '~/types';
+import type { Attachment, AttachmentInput, Conversation, Message, MessageInfo, MessageStatus } from '~/types';
 
 // Estado que não precisa ser reativo vive fora do composable (uma única conexão por aba).
 let socket: Socket | null = null;
@@ -390,6 +390,7 @@ export function useChat() {
         replyToId: temp.replyTo?.id ?? null,
         clientId: temp.clientId,
         attachment: temp.attachment ? toWireAttachment(temp.attachment) : null,
+        forwarded: temp.forwarded || undefined,
       },
       (err: Error | null, res?: { ok: boolean; message?: Message }) => {
         if (err || !res?.ok || !res.message) return fail();
@@ -398,7 +399,13 @@ export function useChat() {
     );
   }
 
-  function send(conversationId: string, body: string, replyTo: Message | null = null, attachment: Attachment | null = null) {
+  function send(
+    conversationId: string,
+    body: string,
+    replyTo: Message | null = null,
+    attachment: Attachment | null = null,
+    opts: { forwarded?: boolean } = {},
+  ) {
     if (!me.value) return;
     const clientId = newId();
     const temp: Message = {
@@ -415,6 +422,7 @@ export function useChat() {
         ? { id: replyTo.id, senderId: replyTo.senderId, body: replyTo.body.slice(0, 200), deleted: false }
         : null,
       status: 'pending',
+      forwarded: !!opts.forwarded,
     };
     (messages.value[conversationId] ??= []).push(temp);
     const conv = findConversation(conversationId);
@@ -473,9 +481,44 @@ export function useChat() {
     handleMessageUpdated(res.message);
   }
 
-  async function deleteMessage(m: Message) {
-    await api(`/messages/${m.id}`, { method: 'DELETE' });
-    if (liveShare.value?.messageId === m.id) stopLiveLocation();
+  /** scope 'all' = apagar para todos (com prazo; master sem prazo); 'me' = só some para mim. */
+  async function deleteMessage(m: Message, scope: 'all' | 'me' = 'all') {
+    await api(`/messages/${m.id}`, { method: 'DELETE', query: { scope } });
+    if (scope === 'me') removeLocal(m.conversationId, m.id);
+    else if (liveShare.value?.messageId === m.id) stopLiveLocation();
+  }
+
+  function removeLocal(conversationId: string, messageId: string) {
+    const list = messages.value[conversationId];
+    if (list) messages.value[conversationId] = list.filter((x) => x.id !== messageId);
+  }
+
+  /** "Apagar para todos" ainda vale? Própria mensagem dentro do prazo; o master sempre. */
+  function canDeleteForAll(m: Message) {
+    if (m.deleted || m.id.startsWith('tmp-')) return false;
+    if (me.value?.isMaster) return true;
+    const limit = (me.value?.deleteForAllMinutes ?? 60) * 60_000;
+    return m.senderId === me.value?.id && Date.now() - new Date(m.createdAt).getTime() <= limit;
+  }
+
+  async function setStar(m: Message, starred: boolean) {
+    await api(`/messages/${m.id}/star`, { method: starred ? 'PUT' : 'DELETE' });
+    const item = messages.value[m.conversationId]?.find((x) => x.id === m.id);
+    if (item) item.starred = starred;
+  }
+
+  async function pinMessage(conversationId: string, messageId: string | null) {
+    await api(`/conversations/${conversationId}/pin`, { method: 'PUT', body: { messageId } });
+    await fetchConversation(conversationId);
+  }
+
+  function messageInfo(m: Message) {
+    return api<MessageInfo>(`/messages/${m.id}/info`);
+  }
+
+  /** Encaminhar: reenvia texto/anexo para cada conversa escolhida, marcado como "Encaminhada". */
+  function forward(m: Message, conversationIds: string[]) {
+    for (const id of conversationIds) send(id, m.body, null, m.attachment, { forwarded: true });
   }
 
   // -------------------------------------------------------------------------
@@ -675,6 +718,8 @@ export function useChat() {
 
     s.on('message:new', (m: Message) => void handleMessageNew(m));
     s.on('message:updated', (m: Message) => handleMessageUpdated(m));
+    // "Apagar para mim" feito em outro aparelho meu.
+    s.on('message:removed', (p: { conversationId: string; messageId: string }) => removeLocal(p.conversationId, p.messageId));
     s.on('message:status', handleStatus);
     s.on('typing', (p: { conversationId: string; userId: string; isTyping: boolean }) =>
       setTypingState(p.conversationId, p.userId, p.isTyping),
@@ -772,6 +817,11 @@ export function useChat() {
     reset,
     loadConversations,
     openConversation,
+    canDeleteForAll,
+    setStar,
+    pinMessage,
+    messageInfo,
+    forward,
     closeConversation,
     loadOlder,
     markRead,
