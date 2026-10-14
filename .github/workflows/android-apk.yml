@@ -69,13 +69,13 @@ jobs:
           echo "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" | base64 -d > "$RUNNER_TEMP/chat-release.jks"
           export ANDROID_KEYSTORE_FILE="$RUNNER_TEMP/chat-release.jks"
           cd android && ./gradlew assembleRelease --no-daemon
-          cp app/build/outputs/apk/release/app-release.apk "$GITHUB_WORKSPACE/Chat-${{ inputs.version }}.apk"
+          cp app/build/outputs/apk/release/app-release.apk "$GITHUB_WORKSPACE/Zynko-${{ inputs.version }}.apk"
 
       - name: Publicar em Releases
         working-directory: .
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release create "android-v${{ inputs.version }}-${{ github.run_number }}" "Chat-${{ inputs.version }}.apk" \
-            --title "Chat ${{ inputs.version }} (Android)" \
-            --notes "Baixe o arquivo Chat-${{ inputs.version }}.apk no celular Android e abra para instalar."
+          gh release create "android-v${{ inputs.version }}-${{ github.run_number }}" "Zynko-${{ inputs.version }}.apk" \
+            --title "Zynko ${{ inputs.version }} (Android)" \
+            --notes "Baixe o arquivo Zynko-${{ inputs.version }}.apk no celular Android e abra para instalar."

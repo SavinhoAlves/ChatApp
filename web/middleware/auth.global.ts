@@ -1,6 +1,14 @@
-// Sem login: quem abre o endereço no navegador vê a apresentação (/inicio). O app instalado no celular
-// vai direto para o número/código. No computador, da apresentação se segue para o QR code.
-const PUBLIC = ['/login', '/inicio'];
+// Sem login: quem abre o endereço no navegador vê a apresentação (/inicio). O app instalado (Android,
+// iPhone ou PWA) mostra as boas-vindas animadas na primeira vez (/bemvindo) e depois o cadastro.
+const PUBLIC = ['/login', '/inicio', '/bemvindo'];
+
+function welcomed() {
+  try {
+    return localStorage.getItem('zynko.welcomed') === '1';
+  } catch {
+    return true;
+  }
+}
 
 export default defineNuxtRouteMiddleware((to) => {
   const { token } = useAuth();
@@ -8,6 +16,10 @@ export default defineNuxtRouteMiddleware((to) => {
     if (PUBLIC.includes(to.path)) return navigateTo('/');
     return;
   }
-  if (to.path === '/inicio' && isInstalledApp()) return navigateTo('/login');
-  if (!PUBLIC.includes(to.path)) return navigateTo(isInstalledApp() ? '/login' : '/inicio');
+  const app = isInstalledApp();
+  if (to.path === '/inicio' && app) return navigateTo('/login');
+  if (!PUBLIC.includes(to.path)) {
+    if (!app) return navigateTo('/inicio');
+    return navigateTo(welcomed() ? '/login' : '/bemvindo');
+  }
 });
