@@ -6,8 +6,8 @@ export default defineNuxtConfig({
   modules: ['@vite-pwa/nuxt'],
   css: ['~/assets/css/main.css'],
 
-  // ios/ é o projeto nativo (Capacitor) e guarda uma cópia do site já compilado: fora da checagem de tipos.
-  typescript: { tsConfig: { exclude: ['../ios'] } },
+  // ios/ e android/ são os projetos nativos (Capacitor) e guardam uma cópia do site já compilado: fora da checagem de tipos.
+  typescript: { tsConfig: { exclude: ['../ios', '../android'] } },
 
   app: {
     head: {

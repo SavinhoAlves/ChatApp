@@ -15,3 +15,7 @@ server/uploads/
 *.p8
 ios_cert_key
 ios_cert_key.pub
+android-keystore/
+*.jks
+*.keystore
+dist-android/

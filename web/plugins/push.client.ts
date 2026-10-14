@@ -1,10 +1,12 @@
+import { Capacitor } from '@capacitor/core';
 import { PushNotifications } from '@capacitor/push-notifications';
 
 // Notificações nativas do app de iPhone (APNs). Só roda dentro do app (Capacitor); no navegador não faz nada.
 // Logado: pede permissão, registra o aparelho no servidor (preso a esta sessão) e, ao tocar no aviso,
 // abre a conversa. Com o app aberto o aviso não aparece (presentationOptions vazio no capacitor.config.ts).
 export default defineNuxtPlugin(() => {
-  if (!isNativeApp()) return;
+  // Android precisa do Firebase (google-services.json); sem ele, registrar derruba o app. Por ora, só iPhone.
+  if (!isNativeApp() || Capacitor.getPlatform() !== 'ios') return;
   const auth = useAuth();
   let listening = false;
 
