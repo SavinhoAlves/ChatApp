@@ -7,6 +7,7 @@ import Fastify from 'fastify';
 import { Redis } from 'ioredis';
 import { registerAuth } from './auth.js';
 import { sweepExpiredMessages } from './services/conversationTools.js';
+import { sweepExpiredStatuses } from './services/status.js';
 import { config, MAX_UPLOAD_SIZE } from './config.js';
 import { prisma } from './db.js';
 import { HttpError } from './errors.js';
@@ -20,6 +21,7 @@ import { listRoutes } from './routes/lists.js';
 import { deviceRoutes } from './routes/devices.js';
 import { conversationRoutes } from './routes/conversations.js';
 import { messageRoutes } from './routes/messages.js';
+import { statusRoutes } from './routes/status.js';
 import { stickerRoutes } from './routes/stickers.js';
 import { uploadRoutes } from './routes/uploads.js';
 
@@ -72,6 +74,7 @@ await app.register(
     await api.register(deviceRoutes);
     await api.register(conversationRoutes);
     await api.register(messageRoutes);
+    await api.register(statusRoutes);
     await api.register(stickerRoutes);
     await api.register(uploadRoutes);
   },
@@ -116,9 +119,10 @@ const io = await setupRealtime(app, redis);
 
 await app.listen({ host: config.host, port: config.port });
 
-// Mensagens temporárias: a cada minuto apaga para todos as que venceram.
+// A cada minuto: mensagens temporárias vencidas somem para todos; status com mais de 24 h também.
 setInterval(() => {
   sweepExpiredMessages().catch((error) => app.log.error(error, 'falha ao apagar mensagens temporárias'));
+  sweepExpiredStatuses().catch((error) => app.log.error(error, 'falha ao apagar status vencidos'));
 }, 60_000);
 
 async function shutdown(signal: string) {

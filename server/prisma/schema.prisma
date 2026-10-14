@@ -56,6 +56,10 @@ model User {
   pushDevices    PushDevice[]
   hiddenMessages MessageHidden[]
   starred        MessageStar[]
+  statuses       Status[]
+  statusViews    StatusView[]
+  callsMade      CallLog[]
+  callEntries    CallLogEntry[]
   chatLists      ChatList[]
   reportsMade    Report[]         @relation("ReportsMade")
   reportsAgainst Report[]         @relation("ReportsAgainst")
@@ -380,5 +384,63 @@ model PushDevice {
   user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
   session Session @relation(fields: [sessionId], references: [id], onDelete: Cascade)
 
+  @@index([userId])
+}
+
+// Status ("Atualizações"): texto, foto ou vídeo que some em 24 h. Vê quem tem você nos contatos.
+model Status {
+  id         String   @id @default(cuid())
+  userId     String
+  type       String // 'TEXT' | 'IMAGE' | 'VIDEO'
+  text       String?
+  background String? // cor do status de texto
+  mediaUrl   String?
+  createdAt  DateTime @default(now())
+  expiresAt  DateTime
+
+  user  User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  views StatusView[]
+
+  @@index([userId, expiresAt])
+  @@index([expiresAt])
+}
+
+model StatusView {
+  statusId String
+  viewerId String
+  viewedAt DateTime @default(now())
+
+  status Status @relation(fields: [statusId], references: [id], onDelete: Cascade)
+  viewer User   @relation(fields: [viewerId], references: [id], onDelete: Cascade)
+
+  @@id([statusId, viewerId])
+}
+
+// Histórico de ligações (aba Ligações). id = id da chamada.
+model CallLog {
+  id             String    @id
+  callerId       String
+  conversationId String?
+  video          Boolean
+  createdAt      DateTime  @default(now())
+  answeredAt     DateTime?
+  endedAt        DateTime?
+
+  caller  User           @relation(fields: [callerId], references: [id], onDelete: Cascade)
+  entries CallLogEntry[]
+
+  @@index([callerId, createdAt])
+}
+
+// Quem foi chamado em cada ligação (e se atendeu).
+model CallLogEntry {
+  callId     String
+  userId     String
+  answeredAt DateTime?
+
+  call CallLog @relation(fields: [callId], references: [id], onDelete: Cascade)
+  user User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([callId, userId])
   @@index([userId])
 }

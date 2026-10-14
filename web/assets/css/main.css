@@ -5310,3 +5310,263 @@ html[data-accent='roxo'] body {
     transform: translateY(10px);
   }
 }
+
+/* Aba Ligações */
+.call-list {
+  list-style: none;
+  margin: 0;
+}
+
+.call-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px;
+}
+
+.call-info {
+  display: grid;
+  flex: 1;
+  min-width: 0;
+}
+
+.call-info strong {
+  overflow: hidden;
+  font-size: 16px;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.call-info small {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.call-info .missed {
+  color: var(--danger);
+}
+
+/* ---------- Status (Atualizações) ---------- */
+.status-list {
+  flex: 1;
+  overflow-y: auto;
+  padding: 0 8px 16px;
+}
+
+.status-list .section-label {
+  margin: 14px 10px 6px;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.status-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  width: 100%;
+  padding: 8px 10px;
+  border: 0;
+  border-radius: 16px;
+  background: transparent;
+  color: var(--text);
+  text-align: left;
+}
+
+.status-row:active {
+  background: var(--glass-strong);
+}
+
+.status-ring {
+  position: relative;
+  display: grid;
+  place-items: center;
+  padding: 3px;
+  border-radius: 50%;
+  background: conic-gradient(rgb(var(--accent-light-rgb)), rgb(var(--accent-rgb)), rgb(var(--accent-light-rgb)));
+}
+
+.status-ring > .avatar {
+  box-shadow: 0 0 0 2.5px rgb(var(--bg-rgb));
+}
+
+.status-ring.seen {
+  background: rgb(255 255 255 / 0.22);
+}
+
+.status-ring.none {
+  background: transparent;
+}
+
+.status-add {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  display: grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  border: 2px solid rgb(var(--bg-rgb));
+  border-radius: 50%;
+  background: var(--accent);
+  color: var(--on-accent);
+}
+
+.status-row-info {
+  display: grid;
+  min-width: 0;
+}
+
+.status-row-info strong {
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.status-row-info small {
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.status-empty {
+  margin: 24px 16px;
+  color: var(--muted);
+  font-size: 14px;
+  line-height: 1.5;
+  text-align: center;
+}
+
+.status-viewer,
+.status-compose {
+  position: fixed;
+  inset: 0;
+  z-index: 70;
+  display: flex;
+  flex-direction: column;
+  background: #000;
+  color: #fff;
+}
+
+.status-bars {
+  display: flex;
+  gap: 4px;
+  padding: max(10px, env(safe-area-inset-top)) 10px 0;
+}
+
+.status-bars span {
+  flex: 1;
+  height: 3px;
+  overflow: hidden;
+  border-radius: 2px;
+  background: rgb(255 255 255 / 0.3);
+}
+
+.status-bars i {
+  display: block;
+  height: 100%;
+  background: #fff;
+}
+
+.status-top {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 8px 10px 12px;
+}
+
+.status-compose .status-top {
+  padding-top: max(10px, env(safe-area-inset-top));
+}
+
+.status-top .icon-btn {
+  border-color: transparent;
+  background: transparent;
+  color: #fff;
+  font-size: 20px;
+}
+
+.status-who {
+  display: grid;
+  flex: 1;
+  min-width: 0;
+}
+
+.status-who small {
+  color: rgb(255 255 255 / 0.7);
+  font-size: 12.5px;
+}
+
+.status-stage {
+  position: relative;
+  display: grid;
+  flex: 1;
+  place-items: center;
+  min-height: 0;
+  user-select: none;
+  -webkit-touch-callout: none;
+}
+
+.status-stage img,
+.status-stage video {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+}
+
+.status-text,
+.status-input {
+  margin: 0;
+  padding: 24px;
+  font-size: clamp(24px, 7vw, 36px);
+  font-weight: 600;
+  line-height: 1.3;
+  text-align: center;
+  overflow-wrap: anywhere;
+}
+
+.status-caption {
+  position: absolute;
+  inset: auto 0 0;
+  margin: 0;
+  padding: 16px 20px max(24px, env(safe-area-inset-bottom));
+  background: linear-gradient(transparent, rgb(0 0 0 / 0.7));
+  text-align: center;
+}
+
+.status-views {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  margin: 0 auto max(16px, env(safe-area-inset-bottom));
+  padding: 8px 16px;
+  border: 0;
+  border-radius: 999px;
+  background: rgb(255 255 255 / 0.15);
+  color: #fff;
+}
+
+.status-input {
+  flex: 1;
+  border: 0;
+  background: transparent;
+  color: #fff;
+  resize: none;
+  outline: none;
+}
+
+.status-input::placeholder {
+  color: rgb(255 255 255 / 0.6);
+}
+
+.status-send {
+  position: absolute;
+  right: 18px;
+  bottom: max(18px, env(safe-area-inset-bottom));
+  width: 56px;
+  height: 56px;
+  font-size: 22px;
+}

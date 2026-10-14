@@ -38,6 +38,9 @@ type Room = {
 
 const rooms = new Map<string, Room>();
 
+// Histórico (aba Ligações): grava em segundo plano; falha aqui nunca derruba a ligação.
+const logCall = (fn: () => Promise<unknown>) => void fn().catch((err) => console.error('Falha no histórico de ligações:', err));
+
 const startSchema = z
   .object({
     conversationId: z.string().min(1).optional(),
@@ -104,6 +107,7 @@ export function bindCallEvents(io: Server, socket: Socket, log: FastifyBaseLogge
   function endRoom(room: Room, reason: 'ended' | 'missed' | 'declined') {
     clearTimeout(room.ringTimer);
     rooms.delete(room.id);
+    if (!room.fromLink) logCall(() => prisma.callLog.updateMany({ where: { id: room.id, endedAt: null }, data: { endedAt: new Date() } }));
     for (const socketId of room.participants.values()) toSocket(socketId, 'call:ended', { callId: room.id, reason });
     toUsers([...room.ringing], 'call:ended', { callId: room.id, reason });
   }
@@ -151,6 +155,11 @@ export function bindCallEvents(io: Server, socket: Socket, log: FastifyBaseLogge
 
       const caller = await prisma.user.findUnique({ where: { id: userId }, select: { displayName: true, avatarUrl: true } });
       room.from = { id: userId, displayName: caller?.displayName ?? 'Alguém', avatarUrl: caller?.avatarUrl ?? null };
+      logCall(() =>
+        prisma.callLog.create({
+          data: { id: room.id, callerId: userId, conversationId: room.conversationId, video: room.video, entries: { create: allowed.map((id) => ({ userId: id })) } },
+        }),
+      );
       toUsers(allowed, 'call:incoming', { ...roomInfo(room), from: room.from, group: allowed.length > 1 });
       // App fechado no iPhone: o aviso nativo é o que faz a pessoa saber que está tocando.
       void pushIncomingCall(userId, room.from.displayName, allowed, data.video).catch((err) => log.error(err));
@@ -183,8 +192,16 @@ export function bindCallEvents(io: Server, socket: Socket, log: FastifyBaseLogge
       }
 
       const others = [...room.participants.keys()].filter((id) => id !== userId);
+      const answering = room.ringing.has(userId);
       room.ringing.delete(userId);
       room.participants.set(userId, socket.id);
+      if (answering && !room.fromLink) {
+        const now = new Date();
+        logCall(async () => {
+          await prisma.callLogEntry.updateMany({ where: { callId: room.id, userId, answeredAt: null }, data: { answeredAt: now } });
+          await prisma.callLog.updateMany({ where: { id: room.id, answeredAt: null }, data: { answeredAt: now } });
+        });
+      }
       // Atendeu em um aparelho: para de tocar nos outros aparelhos da mesma pessoa.
       toUsers([userId], 'call:answered-elsewhere', { callId: room.id, socketId: socket.id });
       const [me] = await peopleInfo([userId]);

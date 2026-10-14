@@ -3,6 +3,8 @@ import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 import { createCallLink } from '../calls.js';
 import { config } from '../config.js';
+import { prisma } from '../db.js';
+import { contactNameMap } from '../services/contacts.js';
 import { validate } from '../errors.js';
 
 // Validade da senha temporária do TURN. O app pede outra antes de vencer (ver useCall.ts).
@@ -33,6 +35,40 @@ export async function callRoutes(app: FastifyInstance) {
       iceServers.push({ urls, ...auth });
     }
     return { iceServers, ttl: secret ? TURN_TTL_SECONDS : null };
+  });
+
+  // Aba Ligações: últimas chamadas feitas e recebidas.
+  app.get('/calls/history', auth, async (request) => {
+    const me = request.user.sub;
+    const logs = await prisma.callLog.findMany({
+      where: { OR: [{ callerId: me }, { entries: { some: { userId: me } } }] },
+      orderBy: { createdAt: 'desc' },
+      take: 60,
+      include: {
+        caller: { select: { id: true, displayName: true, avatarUrl: true } },
+        entries: { include: { user: { select: { id: true, displayName: true, avatarUrl: true } } } },
+      },
+    });
+    const names = await contactNameMap(me);
+    const person = (u: { id: string; displayName: string; avatarUrl: string | null }) => ({ ...u, displayName: names.get(u.id) || u.displayName });
+    return {
+      calls: logs.map((l) => {
+        const outgoing = l.callerId === me;
+        const mine = l.entries.find((e) => e.userId === me);
+        const peers = outgoing ? l.entries.map((e) => person(e.user)) : [person(l.caller)];
+        return {
+          id: l.id,
+          video: l.video,
+          conversationId: l.conversationId,
+          createdAt: l.createdAt.toISOString(),
+          direction: outgoing ? 'outgoing' : 'incoming',
+          // Recebida e não atendida = perdida (vermelho).
+          missed: outgoing ? !l.answeredAt : !mine?.answeredAt,
+          durationSec: l.answeredAt && l.endedAt ? Math.round((l.endedAt.getTime() - l.answeredAt.getTime()) / 1000) : 0,
+          peers,
+        };
+      }),
+    };
   });
 
   // "Enviar link de ligação": quem abrir o link (logado) entra na chamada.
