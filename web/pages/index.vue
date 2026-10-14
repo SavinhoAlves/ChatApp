@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { MessageCircle, MonitorSmartphone, Plus, Settings, ShieldCheck, UsersRound } from '@lucide/vue';
+import { CircleDashed, MessageCircle, Phone, Plus, Settings, ShieldCheck, UsersRound } from '@lucide/vue';
 
 const auth = useAuth();
 const { me } = auth;
@@ -7,7 +7,9 @@ const { activeId, activeConversation, connect, loadConversations, loadArchived, 
 
 const showNew = ref(false);
 const newMode = ref<'direct' | 'group' | 'contact'>('direct');
-const showSettings = ref(false);
+// Abas do app (celular): Atualizações, Ligações, Comunidades, Conversas e Configurações.
+type Tab = 'updates' | 'calls' | 'communities' | 'chats' | 'settings';
+const tab = ref<Tab>('chats');
 // Painel da direita: dados do contato ou pesquisa na conversa.
 const rightPanel = ref<'contact' | 'search' | null>(null);
 const groupStartAdding = ref(false);
@@ -38,7 +40,7 @@ watch(() => route.query.call, () => void joinFromLink());
 
 function openNew(mode: 'direct' | 'group' | 'contact' = 'direct') {
   newMode.value = mode;
-  showSettings.value = false;
+  tab.value = 'chats';
   showNew.value = true;
 }
 
@@ -51,7 +53,7 @@ function onShortcut(event: KeyboardEvent) {
   } else if (event.code === 'Comma') {
     event.preventDefault();
     showNew.value = false;
-    showSettings.value = true;
+    tab.value = 'settings';
   }
 }
 onMounted(() => window.addEventListener('keydown', onShortcut));
@@ -82,23 +84,44 @@ async function start() {
 onMounted(start);
 
 // Celular (fora de uma conversa): barra de abas embaixo, como num app.
-const showDevices = ref(false);
-const tab = computed(() => (showSettings.value ? 'settings' : showNew.value && newMode.value === 'direct' ? 'contacts' : 'chats'));
 const unreadTotal = computed(() => conversations.value.reduce((n, c) => n + (c.unreadCount > 0 ? 1 : 0), 0));
-function goTab(t: 'chats' | 'contacts' | 'settings') {
-  showSettings.value = t === 'settings';
-  if (t === 'contacts') openNew('direct');
-  else showNew.value = false;
+function goTab(t: Tab) {
+  tab.value = t;
+  showNew.value = false;
 }
 
-useHead(() => ({ title: activeConversation.value ? `${conversationTitle(activeConversation.value)} · Chat` : 'Chat' }));
+// Câmera do topo: tira a foto/vídeo e escolhe para quem enviar (como no WhatsApp).
+const showCamera = ref(false);
+const captured = ref<{ blob: Blob; kind: 'IMAGE' | 'VIDEO' } | null>(null);
+function onCaptured(blob: Blob, kind: 'IMAGE' | 'VIDEO') {
+  showCamera.value = false;
+  captured.value = { blob, kind };
+}
+async function sendCaptured(ids: string[]) {
+  const shot = captured.value;
+  captured.value = null;
+  if (!shot) return;
+  try {
+    const name = shot.kind === 'IMAGE' ? `foto-${Date.now()}.jpg` : `video-${Date.now()}.webm`;
+    const attachment = await auth.upload(shot.blob, name);
+    for (const id of ids) useChat().send(id, '', null, attachment);
+    if (ids.length === 1) void useChat().openConversation(ids[0]!);
+  } catch (e) {
+    await useConfirm().alert({ title: 'Não foi possível enviar', message: (e as Error).message });
+  }
+}
+
+useHead(() => ({ title: activeConversation.value ? `${conversationTitle(activeConversation.value)} · Zynko` : 'Zynko' }));
 </script>
 
 <template>
   <div v-if="me" class="app" :class="{ 'chat-open': activeId, 'info-open': rightPanel && activeId }">
-    <SettingsPanel v-if="showSettings" @close="showSettings = false" />
+    <SettingsPanel v-if="tab === 'settings'" @close="tab = 'chats'" />
+    <StatusPanel v-else-if="tab === 'updates'" />
+    <CallsPanel v-else-if="tab === 'calls'" />
+    <CommunitiesPanel v-else-if="tab === 'communities'" />
     <NewChatPanel v-else-if="showNew" :initial-view="newMode === 'direct' ? 'list' : newMode" @close="showNew = false" />
-    <ConversationList v-else @new-chat="openNew" @settings="showSettings = true" />
+    <ConversationList v-else @new-chat="openNew" @settings="tab = 'settings'" @camera="showCamera = true" />
 
     <ChatWindow
       v-if="activeId"
@@ -110,7 +133,7 @@ useHead(() => ({ title: activeConversation.value ? `${conversationTitle(activeCo
     <section v-else class="main empty-state">
       <div class="welcome">
         <img class="welcome-logo" src="/logo.png" alt="" width="148" height="148" />
-        <h1>Chat</h1>
+        <h1>Zynko</h1>
         <p class="welcome-text">
           Envie mensagens, fotos, vídeos, áudios e localização em tempo real. Escolha uma conversa ao lado ou comece
           uma nova para começar a conversar.
@@ -132,24 +155,31 @@ useHead(() => ({ title: activeConversation.value ? `${conversationTitle(activeCo
     <CallOverlay />
 
     <nav v-if="!activeId" class="tabbar" aria-label="Navegação">
-      <button type="button" :class="{ active: tab === 'chats' }" @click="goTab('chats')">
-        <span class="tabbar-icon"><MessageCircle :size="22" :stroke-width="1.9" /><span v-if="unreadTotal" class="tabbar-badge">{{ unreadTotal }}</span></span>
-        Conversas
+      <button type="button" :class="{ active: tab === 'updates' }" @click="goTab('updates')">
+        <span class="tabbar-icon"><CircleDashed :size="22" :stroke-width="1.9" /></span>
+        Atualizações
       </button>
-      <button type="button" :class="{ active: tab === 'contacts' }" @click="goTab('contacts')">
+      <button type="button" :class="{ active: tab === 'calls' }" @click="goTab('calls')">
+        <span class="tabbar-icon"><Phone :size="21" :stroke-width="1.9" /></span>
+        Ligações
+      </button>
+      <button type="button" :class="{ active: tab === 'communities' }" @click="goTab('communities')">
         <span class="tabbar-icon"><UsersRound :size="22" :stroke-width="1.9" /></span>
-        Contatos
+        Comunidades
       </button>
-      <button type="button" @click="showDevices = true">
-        <span class="tabbar-icon"><MonitorSmartphone :size="22" :stroke-width="1.9" /></span>
-        Computador
+      <button type="button" :class="{ active: tab === 'chats' }" @click="goTab('chats')">
+        <span class="tabbar-icon">
+          <MessageCircle :size="22" :stroke-width="1.9" /><span v-if="unreadTotal" class="tabbar-badge">{{ unreadTotal }}</span>
+        </span>
+        Conversas
       </button>
       <button type="button" :class="{ active: tab === 'settings' }" @click="goTab('settings')">
         <span class="tabbar-icon"><Settings :size="22" :stroke-width="1.9" /></span>
-        Ajustes
+        Configurações
       </button>
     </nav>
-    <DevicesDialog v-if="showDevices" @close="showDevices = false" />
+    <CameraDialog v-if="showCamera" @close="showCamera = false" @captured="onCaptured" />
+    <SendToDialog v-if="captured" @close="captured = null" @pick="sendCaptured" />
   </div>
 
   <div v-else class="splash">

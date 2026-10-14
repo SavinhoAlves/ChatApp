@@ -16,7 +16,7 @@ const addSchema = z.object({
   username: z.string().trim().max(40).optional(),
   firstName: z.string().trim().max(40).optional(),
   lastName: z.string().trim().max(40).optional(),
-  // "Novo contato": se o número ainda não usa o Chat, salva mesmo assim (fica em "Convidar para o Chat").
+  // "Novo contato": se o número ainda não usa o Zynko, salva mesmo assim (fica em "Convidar para o Zynko").
   allowPending: z.boolean().optional(),
 });
 const removeParam = z.object({ userId: z.string().min(1) });
@@ -52,7 +52,7 @@ export async function contactRoutes(app: FastifyInstance) {
     return { contact };
   });
 
-  // Números salvos que ainda não usam o Chat (lista "Convidar para o Chat").
+  // Números salvos que ainda não usam o Zynko (lista "Convidar para o Zynko").
   app.get('/contacts/pending', auth, async (request) => ({ pending: await listPhoneContacts(request.user.sub) }));
 
   app.delete('/contacts/pending/:id', auth, async (request) => {
@@ -61,8 +61,8 @@ export async function contactRoutes(app: FastifyInstance) {
     return { ok: true };
   });
 
-  // Importar da agenda do celular: recebe só números e adiciona quem já usa o Chat.
-  // Números de quem não usa o Chat não são guardados.
+  // Importar da agenda do celular: recebe só números e adiciona quem já usa o Zynko.
+  // Números de quem não usa o Zynko não são guardados.
   app.post(
     '/contacts/import',
     { ...auth, config: { rateLimit: { max: 10, timeWindow: '10 minutes' } } },

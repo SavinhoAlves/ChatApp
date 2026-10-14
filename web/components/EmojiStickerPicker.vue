@@ -159,7 +159,7 @@ function jumpTo(id: string) {
       </section>
 
       <section>
-        <p class="picker-title">Figurinhas do Chat</p>
+        <p class="picker-title">Figurinhas do Zynko</p>
         <div class="sticker-grid">
           <button
             v-for="s in STICKERS"

@@ -98,7 +98,7 @@ export async function authRoutes(app: FastifyInstance) {
 
       try {
         if (channel === 'admin') await sendAdminCode(phone, code);
-        else if (channel === 'sms') await sendSms(phone, `Seu código do Chat é ${code}. Não compartilhe com ninguém.`);
+        else if (channel === 'sms') await sendSms(phone, `Seu código do Zynko é ${code}. Não compartilhe com ninguém.`);
         else await sendVoiceCode(phone, code);
       } catch {
         throw new HttpError(

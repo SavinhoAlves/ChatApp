@@ -12,6 +12,7 @@ import {
   List,
   LogOut,
   MessageSquare,
+  MonitorSmartphone,
   Pencil,
   Plus,
   Phone,
@@ -252,6 +253,14 @@ const isMac = import.meta.client && /Mac|iPhone|iPad/.test(navigator.platform);
         </button>
 
         <nav class="settings-list">
+          <!-- Computadores conectados por QR code (o celular é a conta; não aparece aqui). -->
+          <button class="settings-item" type="button" @click="showDevices = true">
+            <MonitorSmartphone :size="20" :stroke-width="1.8" class="settings-icon" />
+            <span class="settings-text">
+              <strong>Dispositivos</strong>
+              <small>Use o Zynko no computador lendo o QR code</small>
+            </span>
+          </button>
           <button v-for="item in items" :key="item.view" class="settings-item" :class="{ 'hide-mobile': item.desktopOnly }" type="button" @click="view = item.view">
             <component :is="item.icon" :size="20" :stroke-width="1.8" class="settings-icon" />
             <span class="settings-text">
@@ -314,8 +323,8 @@ const isMac = import.meta.client && /Mac|iPhone|iPad/.test(navigator.platform);
           <button class="settings-item" type="button" @click="showDevices = true">
             <Smartphone :size="20" :stroke-width="1.8" class="settings-icon" />
             <span class="settings-text">
-              <strong>Dispositivos conectados</strong>
-              <small>Ver aparelhos, conectar um computador por QR code</small>
+              <strong>Dispositivos</strong>
+              <small>Computadores conectados por QR code</small>
             </span>
           </button>
           <button class="settings-item danger" type="button" @click="logoutOthers">
@@ -431,7 +440,7 @@ const isMac = import.meta.client && /Mac|iPhone|iPad/.test(navigator.platform);
           <small v-if="permission === 'denied'" class="settings-note">
             Para liberar, clique no cadeado ao lado do endereço do site e permita notificações.
           </small>
-          <small v-else class="settings-note">Avisa novas mensagens quando o Chat está aberto em segundo plano.</small>
+          <small v-else class="settings-note">Avisa novas mensagens quando o Zynko está aberto em segundo plano.</small>
         </section>
       </template>
 
@@ -440,7 +449,7 @@ const isMac = import.meta.client && /Mac|iPhone|iPad/.test(navigator.platform);
         <div class="settings-soon">
           <Wallet :size="40" :stroke-width="1.4" />
           <strong>Em breve</strong>
-          <p>Pagamentos ainda não estão disponíveis no Chat.</p>
+          <p>Pagamentos ainda não estão disponíveis no Zynko.</p>
         </div>
       </template>
 
@@ -460,14 +469,14 @@ const isMac = import.meta.client && /Mac|iPhone|iPad/.test(navigator.platform);
       <template v-else-if="view === 'help'">
         <section class="settings-help">
           <h3>Como conectar o computador</h3>
-          <p>No computador, abra o Chat: aparece um QR code. No celular, vá em Configurações › Conta › Dispositivos conectados › Conectar dispositivo e aponte a câmera.</p>
+          <p>No computador, abra o Zynko: aparece um QR code. No celular, vá em Configurações › Conta › Dispositivos conectados › Conectar dispositivo e aponte a câmera.</p>
           <h3>Como adicionar alguém</h3>
           <p>Toque em + e digite o número da pessoa, ou importe da agenda (Chrome do Android).</p>
           <h3>Recebi mensagem de um número desconhecido</h3>
           <p>No topo da conversa aparecem as opções Bloquear e Adicionar.</p>
           <h3>Problemas ou sugestões</h3>
-          <p>Fale com quem administra este servidor do Chat.</p>
-          <small class="settings-note">Chat · versão 0.1.0</small>
+          <p>Fale com quem administra este servidor do Zynko.</p>
+          <small class="settings-note">Zynko · versão 0.1.0</small>
         </section>
       </template>
     </div>

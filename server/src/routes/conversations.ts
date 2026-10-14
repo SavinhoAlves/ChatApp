@@ -23,7 +23,7 @@ import {
 const idParam = z.object({ id: z.string().min(1) });
 const memberParam = z.object({ id: z.string().min(1), userId: z.string().min(1) });
 
-// Por id (contato da lista) ou por telefone (qualquer pessoa que use o Chat, mesmo fora dos contatos).
+// Por id (contato da lista) ou por telefone (qualquer pessoa que use o Zynko, mesmo fora dos contatos).
 const directSchema = z
   .object({ userId: z.string().min(1).optional(), phone: z.string().trim().max(30).optional() })
   .refine((d) => d.userId || d.phone, { message: 'Informe o contato ou o número' });
@@ -74,7 +74,7 @@ export async function conversationRoutes(app: FastifyInstance) {
       const phone = normalizePhone(data.phone);
       if (!phone) throw new HttpError(400, INVALID_PHONE_MESSAGE);
       target = await prisma.user.findUnique({ where: { phone }, select: { id: true } });
-      if (!target) throw new HttpError(404, 'Esse número ainda não usa o Chat');
+      if (!target) throw new HttpError(404, 'Esse número ainda não usa o Zynko');
     } else {
       target = await prisma.user.findUnique({ where: { id: data.userId }, select: { id: true } });
       if (!target) throw new HttpError(404, 'Usuário não encontrado');
@@ -92,11 +92,12 @@ export async function conversationRoutes(app: FastifyInstance) {
         data: {
           type: 'DIRECT',
           directKey,
-          participants: { create: self ? [{ userId: me }] : [{ userId: me }, { userId }] },
+          // A outra pessoa só passa a ver a conversa quando chegar a primeira mensagem (sendMessage tira o hiddenAt).
+          participants: { create: self ? [{ userId: me }] : [{ userId: me }, { userId, hiddenAt: new Date() }] },
         },
         select: { id: true },
       });
-      notifyConversationChanged(conversation.id, self ? [me] : [me, userId]);
+      notifyConversationChanged(conversation.id, [me]);
     }
     return { conversation: await getConversation(conversation.id, me) };
   });

@@ -12,7 +12,7 @@ const { api } = useAuth();
 const firstName = ref('');
 const lastName = ref('');
 const countryCode = ref('BR');
-// Veio de "Salvar contato" (número que ainda não usa o Chat): já preenche.
+// Veio de "Salvar contato" (número que ainda não usa o Zynko): já preenche.
 const number = ref(props.initialPhone ?? '');
 const username = ref('');
 const saving = ref(false);
@@ -42,7 +42,7 @@ async function save() {
         lastName: lastName.value.trim() || undefined,
         phone: fullPhone.value,
         username: username.value.trim().replace(/^@/, '') || undefined,
-        // Como na agenda do celular: salva mesmo que o número ainda não use o Chat.
+        // Como na agenda do celular: salva mesmo que o número ainda não use o Zynko.
         allowPending: true,
       },
     });
@@ -84,8 +84,8 @@ async function importFromPhonebook() {
     if (res.added.length) {
       importNote.value = `${res.added.length === 1 ? '1 contato adicionado' : `${res.added.length} contatos adicionados`}: ${res.added.map((u) => u.displayName).join(', ')}`;
       emit('imported', res.added);
-    } else if (res.alreadyContacts) importNote.value = 'Quem usa o Chat dessa lista já estava nos seus contatos.';
-    else importNote.value = `Nenhum dos ${res.checked} números escolhidos usa o Chat ainda.`;
+    } else if (res.alreadyContacts) importNote.value = 'Quem usa o Zynko dessa lista já estava nos seus contatos.';
+    else importNote.value = `Nenhum dos ${res.checked} números escolhidos usa o Zynko ainda.`;
   } catch (e) {
     error.value = (e as Error).message;
   } finally {

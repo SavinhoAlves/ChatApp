@@ -242,7 +242,7 @@ function act(name: 'reply' | 'edit' | 'remove') {
           <span class="bubble-call-icon"><Video v-if="callLink.video" :size="20" /><Phone v-else :size="18" /></span>
           <span class="bubble-call-info">
             <strong>{{ callLink.video ? 'Ligação de vídeo' : 'Ligação de voz' }}</strong>
-            <small>Link de ligação do Chat</small>
+            <small>Link de ligação do Zynko</small>
           </span>
           <button class="btn btn-primary btn-sm" type="button" @click.stop="emit('join-call', callLink.id)">Entrar</button>
         </div>

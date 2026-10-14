@@ -11,7 +11,7 @@ const serverUrl = process.env.CHAT_SERVER_URL || 'https://chat.66-70-214-163.ssl
 const config: CapacitorConfig = {
   // Identificador único do app na Apple. Depois do primeiro envio ao App Store Connect não muda mais.
   appId: 'com.savioalves.chat',
-  appName: 'Chat',
+  appName: 'Zynko',
   // Arquivos guardados dentro do app: só a página de "sem conexão" é usada (ver errorPath).
   webDir: '.output/public',
   backgroundColor: '#050b0a',

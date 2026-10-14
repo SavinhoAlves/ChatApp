@@ -5,10 +5,10 @@ export interface PendingContact {
   createdAt: string;
 }
 
-/** Texto do convite ("Convidar para o Chat"). */
+/** Texto do convite ("Convidar para o Zynko"). */
 export function inviteText(name?: string) {
   const hi = name ? `Oi, ${name.split(' ')[0]}!` : 'Oi!';
-  return `${hi} Vamos conversar pelo Chat? É só entrar com seu número em ${location.origin}`;
+  return `${hi} Vamos conversar pelo Zynko? É só entrar com seu número em ${location.origin}`;
 }
 
 /**
@@ -19,7 +19,7 @@ export async function shareInvite(name?: string): Promise<'shared' | 'copied' | 
   const text = inviteText(name);
   if (typeof navigator.share === 'function') {
     try {
-      await navigator.share({ title: 'Convite para o Chat', text });
+      await navigator.share({ title: 'Convite para o Zynko', text });
       return 'shared';
     } catch (e) {
       if ((e as Error).name === 'AbortError') return 'cancelled';

@@ -74,7 +74,7 @@ async function disable() {
         <strong>Sua conta é comercial.</strong> Quem conversar com você vê o selo e os dados da empresa abaixo.
       </p>
       <p v-else>
-        Use o Chat como empresa: um selo de <strong>conta comercial</strong> e um perfil com categoria, horário, endereço e site.
+        Use o Zynko como empresa: um selo de <strong>conta comercial</strong> e um perfil com categoria, horário, endereço e site.
         Dá para usar com 0800, 4004 ou fixo.
       </p>
     </div>

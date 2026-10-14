@@ -112,7 +112,7 @@ function cancelPending() {
 
       <div class="dialog-body">
         <template v-if="done">
-          <div class="notice"><Check :size="16" :stroke-width="2" /> Dispositivo conectado. Já pode usar o Chat nele.</div>
+          <div class="notice"><Check :size="16" :stroke-width="2" /> Dispositivo conectado. Já pode usar o Zynko nele.</div>
           <button class="btn btn-primary btn-block" type="button" @click="emit('close')">Concluir</button>
         </template>
 

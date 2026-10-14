@@ -71,7 +71,7 @@ export async function addContact(ownerId: string, input: NewContactInput) {
     const phone = normalizePhone(rawPhone);
     if (!phone) throw new HttpError(400, INVALID_PHONE_MESSAGE);
     target = await prisma.user.findUnique({ where: { phone }, select: userSelect });
-    if (!target) throw new HttpError(404, 'Esse número ainda não usa o Chat');
+    if (!target) throw new HttpError(404, 'Esse número ainda não usa o Zynko');
     if (rawUsername && target.username.toLowerCase() !== rawUsername.replace(/^@/, '').toLowerCase()) {
       throw new HttpError(400, 'Esse nome de usuário não é do dono desse número');
     }
@@ -148,7 +148,7 @@ export async function isContact(ownerId: string, contactId: string) {
 }
 
 // ---------------------------------------------------------------------------
-// Contatos com número que ainda não usa o Chat ("Convidar para o Chat")
+// Contatos com número que ainda não usa o Zynko ("Convidar para o Zynko")
 // ---------------------------------------------------------------------------
 
 const pendingSelect = { id: true, phone: true, firstName: true, lastName: true, createdAt: true } as const;

@@ -11,12 +11,12 @@ export default defineNuxtConfig({
 
   app: {
     head: {
-      title: 'Chat',
+      title: 'Zynko',
       htmlAttrs: { lang: 'pt-BR' },
       meta: [
         { name: 'viewport', content: 'width=device-width, initial-scale=1, viewport-fit=cover' },
         { name: 'theme-color', content: '#050b0a' },
-        { name: 'description', content: 'Chat em tempo real' },
+        { name: 'description', content: 'Zynko: mensagens, ligações e figurinhas' },
         { name: 'mobile-web-app-capable', content: 'yes' },
         { name: 'apple-mobile-web-app-capable', content: 'yes' },
       ],
@@ -40,9 +40,9 @@ export default defineNuxtConfig({
   pwa: {
     registerType: 'autoUpdate',
     manifest: {
-      name: 'Chat',
-      short_name: 'Chat',
-      description: 'Chat em tempo real',
+      name: 'Zynko',
+      short_name: 'Zynko',
+      description: 'Zynko: mensagens, ligações e figurinhas',
       lang: 'pt-BR',
       theme_color: '#050b0a',
       background_color: '#050b0a',

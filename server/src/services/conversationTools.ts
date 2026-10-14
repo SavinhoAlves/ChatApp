@@ -73,10 +73,10 @@ export async function exportConversation(conversationId: string, viewerId: strin
 
   const other = conversation.participants.find((p) => p.user.id !== viewerId)?.user;
   const title = conversation.type === 'GROUP' ? (conversation.title ?? 'Grupo') : other ? nameOf(other) : 'Você';
-  const header = `Conversa do Chat com ${title}\nExportada em ${fmt.format(new Date())}\n\n`;
+  const header = `Conversa do Zynko com ${title}\nExportada em ${fmt.format(new Date())}\n\n`;
   const text = header + messages.map((m) => lineFor(m, nameOf(m.sender))).join('\n') + '\n';
   const safe = title.normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^\w.-]+/g, '-').slice(0, 40) || 'conversa';
-  return { filename: `Conversa do Chat com ${safe}.txt`, text };
+  return { filename: `Conversa do Zynko com ${safe}.txt`, text };
 }
 
 /** "Denunciar": guarda as últimas mensagens para análise; pode bloquear junto (1:1). */

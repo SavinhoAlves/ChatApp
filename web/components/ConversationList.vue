@@ -1,9 +1,9 @@
 <script setup lang="ts">
-import { Archive, Bell, ChevronRight, EllipsisVertical, LogOut, MessageSquarePlus, Plus, Search, Settings, Smartphone, UserPlus, Users } from '@lucide/vue';
+import { Archive, Bell, Camera, ChevronRight, EllipsisVertical, LogOut, MessageSquarePlus, Plus, Search, Settings, Smartphone, UserPlus, Users } from '@lucide/vue';
 
-const emit = defineEmits<{ 'new-chat': [mode: 'direct' | 'group' | 'contact']; settings: [] }>();
+const emit = defineEmits<{ 'new-chat': [mode: 'direct' | 'group' | 'contact']; settings: []; camera: [] }>();
 
-const { me, logout } = useAuth();
+const { logout } = useAuth();
 const { confirm } = useConfirm();
 const { conversations, archivedConversations, activeId, online, connected, openConversation, conversationTitle, otherUser, isSelfChat, loadArchived } =
   useChat();
@@ -105,13 +105,13 @@ function toggleArchived() {
 <template>
   <aside class="sidebar">
     <header class="side-header">
-      <button v-if="me" class="me-avatar" type="button" title="Perfil e configurações" aria-label="Perfil e configurações" @click="emit('settings')">
-        <Avatar :name="me.displayName" :seed="me.id" :size="40" :src="me.avatarUrl" />
-      </button>
-      <div class="me">
-        <strong>Conversas</strong>
-        <small :class="connected ? 'ok' : 'warn'">{{ connected ? 'conectado' : 'reconectando…' }}</small>
+      <div class="me brand-title">
+        <strong>Zynko</strong>
+        <small v-if="!connected" class="warn">reconectando…</small>
       </div>
+      <button class="icon-btn" type="button" title="Câmera" aria-label="Câmera" @click="emit('camera')">
+        <Camera :size="21" :stroke-width="1.8" />
+      </button>
       <button class="icon-btn hide-mobile" type="button" title="Nova conversa" aria-label="Nova conversa" @click="emit('new-chat', 'direct')">
         <Plus :size="20" :stroke-width="1.8" />
       </button>
@@ -135,7 +135,7 @@ function toggleArchived() {
             <UserPlus :size="15" :stroke-width="2" /> Adicionar contato
           </button>
           <button class="menu-item" role="menuitem" type="button" @click="menuAction(() => (showDevices = true))">
-            <Smartphone :size="15" :stroke-width="2" /> Dispositivos conectados
+            <Smartphone :size="15" :stroke-width="2" /> Dispositivos
           </button>
           <button class="menu-item" role="menuitem" type="button" @click="menuAction(() => emit('settings'))">
             <Settings :size="15" :stroke-width="2" /> Configurações

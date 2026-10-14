@@ -92,7 +92,7 @@ async function run(fn: () => Promise<void>) {
   }
 }
 
-// Número que ainda não usa o Chat: em vez de erro, oferece Convidar / Salvar contato.
+// Número que ainda não usa o Zynko: em vez de erro, oferece Convidar / Salvar contato.
 const notOnChat = ref('');
 
 const openChat = (target: string | { phone: string }) =>
@@ -183,16 +183,16 @@ async function onContactSaved(user: User) {
   setTimeout(() => (justSaved.value = ''), 4000);
 }
 
-// Salvo, mas o número ainda não usa o Chat: fica em "Convidar para o Chat".
+// Salvo, mas o número ainda não usa o Zynko: fica em "Convidar para o Zynko".
 async function onPendingSaved(p: PendingContact) {
   await loadContacts();
-  justSaved.value = `${p.displayName} foi salvo. Ainda não usa o Chat: toque em Convidar abaixo.`;
+  justSaved.value = `${p.displayName} foi salvo. Ainda não usa o Zynko: toque em Convidar abaixo.`;
   view.value = 'list';
   setTimeout(() => (justSaved.value = ''), 6000);
 }
 
 function newCommunity() {
-  void alert({ title: 'Comunidades', message: 'Comunidades ainda não estão disponíveis no Chat. Por enquanto, use grupos.' });
+  void alert({ title: 'Comunidades', message: 'Comunidades ainda não estão disponíveis no Zynko. Por enquanto, use grupos.' });
 }
 
 const titles = { list: 'Nova conversa', group: 'Adicionar participantes', 'group-name': 'Novo grupo', contact: 'Novo contato' };
@@ -252,7 +252,7 @@ const titles = { list: 'Nova conversa', group: 'Adicionar participantes', 'group
         <p v-if="inviteNote" class="notice">{{ inviteNote }}</p>
 
         <div v-if="notOnChat && view === 'list'" class="not-on-chat">
-          <strong>{{ formatPhone(notOnChat) || notOnChat }} ainda não usa o Chat</strong>
+          <strong>{{ formatPhone(notOnChat) || notOnChat }} ainda não usa o Zynko</strong>
           <small>Convide para conversar ou salve o número: quando a pessoa entrar, ela aparece nos seus contatos.</small>
           <div class="not-on-chat-actions">
             <button class="btn btn-primary btn-sm" type="button" @click="invite()"><Send :size="14" /> Convidar</button>
@@ -287,7 +287,7 @@ const titles = { list: 'Nova conversa', group: 'Adicionar participantes', 'group
             </button>
           </template>
 
-          <p class="section-label">Contatos no Chat</p>
+          <p class="section-label">Contatos no Zynko</p>
 
           <button v-if="showSelf && me" class="user-item" type="button" :disabled="submitting" @click="openChat(me.id)">
             <Avatar :name="me.displayName" :seed="me.id" :size="42" :src="me.avatarUrl" />
@@ -320,7 +320,7 @@ const titles = { list: 'Nova conversa', group: 'Adicionar participantes', 'group
         </section>
 
         <section v-if="view === 'list' && filteredPending.length" class="letter-section">
-          <p class="section-label">Convidar para o Chat</p>
+          <p class="section-label">Convidar para o Zynko</p>
           <div v-for="p in filteredPending" :key="p.id" class="user-item pending-item">
             <span class="number-icon"><Phone :size="17" :stroke-width="2" /></span>
             <span class="user-info">

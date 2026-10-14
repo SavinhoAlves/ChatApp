@@ -22,9 +22,9 @@ const displayName = ref('');
 
 const titles: Record<Step, string> = { phone: 'Seu número', code: 'Confirme o código', profile: 'Seu perfil' };
 const subtitles: Record<Step, string> = {
-  phone: 'Vamos confirmar que o número é seu com um código de 6 dígitos.',
+  phone: 'Digite seu número com DDD. Vamos enviar um código para confirmar.',
   code: 'Digite o código para continuar.',
-  profile: 'É assim que as pessoas vão ver você no Chat.',
+  profile: 'É assim que as pessoas vão ver você no Zynko.',
 };
 // App instalado não tem a apresentação: some o "voltar".
 const installed = isInstalledApp();
@@ -63,7 +63,7 @@ const canSms = ref(true);
 const canCall = ref(true);
 const codeHint = computed(() => {
   if (channel.value === 'call') return `Vamos ligar para ${formatPhone(phone.value)} e ditar o código`;
-  if (channel.value === 'admin') return 'Peça o código de ativação ao administrador do Chat';
+  if (channel.value === 'admin') return 'Peça o código de ativação ao administrador do Zynko';
   return `Código enviado por SMS para ${formatPhone(phone.value)}`;
 });
 
@@ -198,7 +198,7 @@ onBeforeUnmount(() => {
   clearPhoto();
 });
 
-useHead({ title: 'Entrar · Chat' });
+useHead({ title: 'Entrar · Zynko' });
 </script>
 
 <template>
@@ -206,10 +206,10 @@ useHead({ title: 'Entrar · Chat' });
     <!-- Computador sem vínculo: tela de QR, como no WhatsApp Web -->
     <section v-if="method === 'qr'" class="qr-screen">
       <div class="qr-screen-main">
-        <div class="qr-screen-brand"><img src="/logo.png" alt="" width="36" height="36" /> Chat</div>
-        <h1>Use o Chat no seu computador</h1>
+        <div class="qr-screen-brand"><img src="/logo.png" alt="" width="36" height="36" /> Zynko</div>
+        <h1>Use o Zynko no seu computador</h1>
         <ol class="qr-steps big">
-          <li>Abra o Chat no seu celular</li>
+          <li>Abra o Zynko no seu celular</li>
           <li>
             Toque em <Smartphone :size="16" :stroke-width="2" class="inline-icon" />
             <strong>Dispositivos conectados</strong>
@@ -238,7 +238,7 @@ useHead({ title: 'Entrar · Chat' });
       <NuxtLink v-if="step === 'phone' && !installed" class="icon-btn auth-back" to="/inicio" aria-label="Voltar à apresentação">
         <ArrowLeft :size="20" :stroke-width="2" />
       </NuxtLink>
-      <img v-if="step !== 'profile'" class="brand-logo" src="/logo.png" alt="Chat" width="96" height="96" />
+      <img v-if="step !== 'profile'" class="brand-logo" src="/logo.png" alt="Zynko" width="96" height="96" />
       <h1>{{ titles[step] }}</h1>
       <p class="auth-sub">{{ subtitles[step] }}</p>
 
@@ -250,7 +250,6 @@ useHead({ title: 'Entrar · Chat' });
             <Phone :size="16" :stroke-width="2" />
             <input v-model="phone" class="input" type="tel" autocomplete="tel" inputmode="tel" placeholder="(11) 99999-9999" required />
           </div>
-          <small>Com DDD. Sem o +, usamos Brasil (+55).</small>
         </label>
         <button class="btn btn-primary btn-block" type="submit" :disabled="loading || !phone.trim()">
           {{ loading ? 'Enviando…' : 'Receber código' }}

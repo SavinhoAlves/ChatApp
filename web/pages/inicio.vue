@@ -46,13 +46,13 @@ async function install() {
   }
 }
 
-useHead({ title: 'Chat — mensagens, ligações e figurinhas' });
+useHead({ title: 'Zynko — mensagens, ligações e figurinhas' });
 </script>
 
 <template>
   <main class="landing">
     <header class="lp-top">
-      <span class="lp-brand"><img src="/logo.png" alt="" width="30" height="30" /> Chat</span>
+      <span class="lp-brand"><img src="/logo.png" alt="" width="30" height="30" /> Zynko</span>
       <NuxtLink class="lp-top-link" to="/login">
         <QrCode v-if="desktop" :size="16" :stroke-width="2" />
         <Smartphone v-else :size="16" :stroke-width="2" />
@@ -144,7 +144,7 @@ useHead({ title: 'Chat — mensagens, ligações e figurinhas' });
       </NuxtLink>
     </section>
 
-    <footer class="lp-footer">Chat · mensagens em tempo real</footer>
+    <footer class="lp-footer">Zynko · mensagens em tempo real</footer>
 
     <!-- iPhone: instalar pelo Safari -->
     <div v-if="iosHelp" class="overlay" @click.self="iosHelp = false">

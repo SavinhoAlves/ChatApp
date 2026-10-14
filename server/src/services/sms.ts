@@ -52,7 +52,7 @@ export async function sendVoiceCode(phone: string, code: string) {
   }
 
   const spoken = code.split('').join(', ');
-  const say = `Olá! Seu código do Chat é: ${spoken}. Repetindo: ${spoken}.`;
+  const say = `Olá! Seu código do Zynko é: ${spoken}. Repetindo: ${spoken}.`;
   const twiml = `<Response><Pause length="1"/><Say language="pt-BR" voice="Polly.Camila">${say}</Say><Pause length="1"/><Say language="pt-BR" voice="Polly.Camila">${say}</Say></Response>`;
 
   const { twilioSid, twilioToken, twilioFrom } = config.sms;
@@ -76,7 +76,7 @@ export async function sendVoiceCode(phone: string, code: string) {
  */
 export async function sendAdminCode(phone: string, code: string) {
   const { callmebotPhone, callmebotApiKey } = config.sms;
-  const text = `*Chat* — código de ativação para ${phone}: *${code}*`;
+  const text = `*Zynko* — código de ativação para ${phone}: *${code}*`;
   const url = `https://api.callmebot.com/whatsapp.php?${new URLSearchParams({ phone: callmebotPhone!, text, apikey: callmebotApiKey! })}`;
   const res = await fetch(url, { signal: AbortSignal.timeout(15_000) });
   // O CallMeBot às vezes responde 200 com o erro no corpo (ex.: apikey inválida).

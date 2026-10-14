@@ -42,7 +42,7 @@ async function send() {
       </header>
       <div class="dialog-body">
         <p class="dialog-hint">
-          As últimas 5 mensagens desta conversa serão enviadas para quem administra o Chat analisar. A pessoa não será
+          As últimas 5 mensagens desta conversa serão enviadas para quem administra o Zynko analisar. A pessoa não será
           avisada.
         </p>
         <label class="radio-row">

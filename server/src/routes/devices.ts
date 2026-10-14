@@ -31,6 +31,8 @@ export async function deviceRoutes(app: FastifyInstance) {
     { config: { rateLimit: { max: 20, timeWindow: '1 minute' } } },
     async (request) => {
       const device = validate(deviceInfoSchema, request.body ?? {});
+      // O QR é só para computador: o celular entra pelo número (como no WhatsApp).
+      if (device.platform === 'mobile') throw new HttpError(400, 'No celular, entre com o seu número.');
       // Limpeza oportunista de pedidos antigos.
       void prisma.qrLogin.deleteMany({ where: { expiresAt: { lt: new Date(Date.now() - 60 * 60_000) } } }).catch(() => {});
 
@@ -94,6 +96,7 @@ export async function deviceRoutes(app: FastifyInstance) {
     async (request) => {
       const { code } = validate(codeSchema, request.body);
       const qr = await findValidQr(code);
+      if (qr.platform === 'mobile') throw new HttpError(400, 'Só dá para conectar um computador por QR code.');
       const approved = await prisma.qrLogin.updateMany({
         where: { id: qr.id, userId: null, claimedAt: null },
         data: { userId: request.user.sub },
@@ -105,8 +108,9 @@ export async function deviceRoutes(app: FastifyInstance) {
 
   // ---- Dispositivos conectados ----
   app.get('/devices', { preHandler: [app.authenticate] }, async (request) => {
+    // "Dispositivos": só os computadores conectados por QR code (o próprio celular não aparece).
     const sessions = await prisma.session.findMany({
-      where: { userId: request.user.sub, revokedAt: null },
+      where: { userId: request.user.sub, revokedAt: null, platform: { not: 'mobile' } },
       orderBy: { lastActiveAt: 'desc' },
       select: { id: true, deviceName: true, platform: true, createdAt: true, lastActiveAt: true },
     });
