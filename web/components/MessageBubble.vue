@@ -276,7 +276,7 @@ function onTouchend() {
           @click="!press.consumeClick() && (lightbox = true)"
         />
         <video v-else-if="message.attachment?.type === 'VIDEO'" :src="message.attachment.url" class="bubble-video" controls />
-        <audio v-else-if="message.attachment?.type === 'AUDIO'" :src="message.attachment.url" class="bubble-audio" controls />
+        <VoicePlayer v-else-if="message.attachment?.type === 'AUDIO'" :src="message.attachment.url!" :mine="mine" />
         <template v-else-if="message.attachment?.type === 'LOCATION'">
           <a v-if="mapPreview" :href="osmLink" target="_blank" rel="noopener" class="bubble-map" aria-label="Abrir no mapa">
             <span class="bubble-map-crop">

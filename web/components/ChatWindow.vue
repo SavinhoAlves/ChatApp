@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ArrowLeft, Ban, Pin, Camera, Check, ChevronDown, Copy, File, FileText, Images, MapPin, Mic, Phone, Plus, Search, Send, ShieldAlert, Smile, Store, Timer, Trash2, Upload, UserPlus, UserRound, Video, X } from '@lucide/vue';
+import { ArrowLeft, Ban, Pin, Camera, Check, ChevronDown, ChevronUp, Lock, Copy, File, FileText, Images, MapPin, Mic, Phone, Plus, Search, Send, ShieldAlert, Smile, Store, Timer, Trash2, Upload, UserPlus, UserRound, Video, X } from '@lucide/vue';
 import type { StickerRef } from '~/composables/useStickers';
 import type { Attachment, Message, User } from '~/types';
 import { formatPhone } from '~/utils/phone';
@@ -450,61 +450,75 @@ async function uploadPending(): Promise<Attachment | null> {
 // Mensagem de voz
 // -----------------------------------------------------------------------
 
-const recording = ref(false);
-const recordingSeconds = ref(0);
-let mediaRecorder: MediaRecorder | null = null;
-let recordedChunks: BlobPart[] = [];
-let recordingTimer: ReturnType<typeof setInterval> | undefined;
-let recordingStream: MediaStream | null = null;
+// Segurar o microfone grava; soltar envia. Arrastar para a esquerda cancela; para cima trava
+// (continua gravando sem segurar). Toque rápido (ou clique no computador) já grava travado.
+const voice = useVoiceRecorder();
+const recording = voice.recording;
+const CANCEL_DX = -110;
+const LOCK_DY = -80;
+const slideX = ref(0);
+const lockProgress = ref(0);
+let press: { x: number; y: number; at: number; id: number } | null = null;
 
-function stopTracks() {
-  recordingStream?.getTracks().forEach((t) => t.stop());
-  recordingStream = null;
+async function onMicDown(e: PointerEvent) {
+  if (e.button !== 0) return;
+  e.preventDefault();
+  (e.currentTarget as HTMLElement).setPointerCapture?.(e.pointerId);
+  press = { x: e.clientX, y: e.clientY, at: Date.now(), id: e.pointerId };
+  slideX.value = 0;
+  lockProgress.value = 0;
+  navigator.vibrate?.(15);
+  if (!(await voice.start())) {
+    press = null;
+    flash('Não foi possível acessar o microfone.');
+  }
 }
 
-async function startRecording() {
-  if (recording.value) return;
-  try {
-    recordingStream = await navigator.mediaDevices.getUserMedia({ audio: true });
-  } catch {
-    flash('Não foi possível acessar o microfone.');
+function onMicMove(e: PointerEvent) {
+  if (!press || e.pointerId !== press.id || voice.locked.value) return;
+  const dx = e.clientX - press.x;
+  const dy = e.clientY - press.y;
+  slideX.value = Math.min(0, dx);
+  lockProgress.value = Math.min(1, Math.max(0, -dy / -LOCK_DY));
+  if (dx < CANCEL_DX) {
+    press = null;
+    navigator.vibrate?.([10, 40, 10]);
+    void voice.stop(false);
+  } else if (dy < LOCK_DY) {
+    press = null;
+    navigator.vibrate?.(20);
+    voice.locked.value = true;
+  }
+}
+
+function onMicUp(e: PointerEvent) {
+  if (!press || e.pointerId !== press.id) return;
+  const quick = Date.now() - press.at < 350 && slideX.value > -10;
+  press = null;
+  slideX.value = 0;
+  lockProgress.value = 0;
+  if (!voice.recording.value) return;
+  // Toque rápido: grava travado (como clicar no microfone no WhatsApp Web).
+  if (quick) voice.locked.value = true;
+  else void finishVoice(true);
+}
+
+function onMicCancel() {
+  if (!press) return;
+  press = null;
+  slideX.value = 0;
+  void voice.stop(false);
+}
+
+async function finishVoice(send: boolean) {
+  const id = activeId.value;
+  const audio = await voice.stop(send);
+  if (!audio || !id) {
+    if (send && !audio) flash('Áudio muito curto. Segure para gravar.');
     return;
   }
-  recordedChunks = [];
-  mediaRecorder = new MediaRecorder(recordingStream);
-  mediaRecorder.ondataavailable = (e) => {
-    if (e.data.size > 0) recordedChunks.push(e.data);
-  };
-  mediaRecorder.start();
-  recording.value = true;
-  recordingSeconds.value = 0;
-  recordingTimer = setInterval(() => (recordingSeconds.value += 1), 1000);
-}
-
-function stopRecording(send: boolean) {
-  if (!recording.value || !mediaRecorder) return;
-  clearInterval(recordingTimer);
-  const recorder = mediaRecorder;
-  mediaRecorder = null;
-  recording.value = false;
-  recorder.addEventListener(
-    'stop',
-    () => {
-      stopTracks();
-      if (!send || recordedChunks.length === 0) return;
-      const blob = new Blob(recordedChunks, { type: recorder.mimeType || 'audio/webm' });
-      void sendVoiceMessage(blob);
-    },
-    { once: true },
-  );
-  recorder.stop();
-}
-
-async function sendVoiceMessage(blob: Blob) {
-  const id = activeId.value;
-  if (!id) return;
   try {
-    const attachment = await upload(blob, `audio-${Date.now()}.webm`);
+    const attachment = await upload(audio.blob, `audio-${Date.now()}.${audio.ext}`);
     chat.send(id, '', null, attachment);
     stick.value = true;
     scrollToBottom();
@@ -513,12 +527,9 @@ async function sendVoiceMessage(blob: Blob) {
   }
 }
 
-const recordingLabel = computed(() => {
-  const s = recordingSeconds.value;
-  return `${Math.floor(s / 60)
-    .toString()
-    .padStart(2, '0')}:${(s % 60).toString().padStart(2, '0')}`;
-});
+function stopRecording(send: boolean) {
+  void finishVoice(send);
+}
 
 const isTouch = () => window.matchMedia('(pointer: coarse)').matches;
 
@@ -870,18 +881,25 @@ const replyPreviewName = computed(() => (replyTo.value && conv.value ? chat.user
         </button>
       </div>
 
-      <div v-if="recording" class="composer-row recording-bar">
+      <div v-if="recording && voice.locked.value" class="composer-row recording-bar">
         <button class="icon-btn" type="button" aria-label="Cancelar gravação" @click="stopRecording(false)">
           <Trash2 :size="20" :stroke-width="2" />
         </button>
         <span class="rec-dot" aria-hidden="true" />
-        <span class="rec-time">{{ recordingLabel }}</span>
-        <span class="rec-hint">Gravando áudio…</span>
+        <span class="rec-time">{{ voice.label.value }}</span>
+        <span class="rec-wave" aria-hidden="true"><i v-for="(l, i) in voice.levels.value" :key="i" :style="{ height: `${Math.round(l * 100)}%` }" /></span>
         <button class="send-btn" type="button" aria-label="Enviar áudio" @click="stopRecording(true)">
           <Send :size="19" :stroke-width="2.2" />
         </button>
       </div>
-      <div v-else class="composer-row">
+      <div v-else class="composer-row" :class="{ 'is-recording': recording }">
+        <!-- Segurando o microfone: tempo, ondas e "deslize para cancelar" no lugar do campo. -->
+        <span v-if="recording" class="rec-inline">
+          <span class="rec-dot" aria-hidden="true" />
+          <span class="rec-time">{{ voice.label.value }}</span>
+          <span class="rec-wave" aria-hidden="true"><i v-for="(l, i) in voice.levels.value.slice(-18)" :key="i" :style="{ height: `${Math.round(l * 100)}%` }" /></span>
+          <span class="rec-cancel" :style="{ transform: `translateX(${slideX}px)`, opacity: 1 + slideX / 140 }">‹ Deslize para cancelar</span>
+        </span>
         <span ref="attachRoot" style="display: contents">
           <button
             class="icon-btn attach-btn"
@@ -929,15 +947,25 @@ const replyPreviewName = computed(() => (replyTo.value && conv.value ? chat.user
           @input="onInput"
           @paste="onPaste"
         />
-        <button
-          v-if="!editing && !draft.trim() && !pendingFile"
-          class="icon-btn"
-          type="button"
-          aria-label="Gravar áudio"
-          @click="startRecording"
-        >
-          <Mic :size="20" :stroke-width="1.8" />
-        </button>
+        <span v-if="!editing && !draft.trim() && !pendingFile" class="mic-wrap">
+          <span v-if="recording" class="rec-lock" :style="{ transform: `translateY(${-lockProgress * 24}px)` }" aria-hidden="true">
+            <Lock :size="16" :stroke-width="2.2" />
+            <ChevronUp :size="14" :stroke-width="2.4" />
+          </span>
+          <button
+            class="icon-btn mic-btn"
+            :class="{ holding: recording }"
+            type="button"
+            aria-label="Segure para gravar áudio"
+            @pointerdown="onMicDown"
+            @pointermove="onMicMove"
+            @pointerup="onMicUp"
+            @pointercancel="onMicCancel"
+            @contextmenu.prevent
+          >
+            <Mic :size="20" :stroke-width="1.8" />
+          </button>
+        </span>
         <button
           v-else
           class="send-btn"
