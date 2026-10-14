@@ -79,7 +79,27 @@ async function start() {
   void loadArchived().catch(() => {});
   void useLists().loadLists().catch(() => {});
   void joinFromLink();
+  // Web Push: permissão já dada antes → renova a inscrição deste aparelho (sem perguntar de novo).
+  void useWebPush().subscribe().catch(() => {});
+  void openFromQuery();
 }
+
+// Tocou numa notificação (Web Push): abre a conversa (?c=ID ao abrir, ou mensagem do service worker).
+async function openFromQuery() {
+  const id = typeof route.query.c === 'string' ? route.query.c : null;
+  if (!id) return;
+  await navigateTo({ query: {} }, { replace: true });
+  for (let i = 0; i < 50 && !conversations.value.some((c) => c.id === id); i++) await new Promise((r) => setTimeout(r, 100));
+  await useChat().openConversation(id).catch(() => {});
+}
+function onSwMessage(e: MessageEvent) {
+  if (e.data?.type === 'open-conversation' && typeof e.data.conversationId === 'string') {
+    tab.value = 'chats';
+    void useChat().openConversation(e.data.conversationId).catch(() => {});
+  }
+}
+onMounted(() => navigator.serviceWorker?.addEventListener('message', onSwMessage));
+onBeforeUnmount(() => navigator.serviceWorker?.removeEventListener('message', onSwMessage));
 
 onMounted(start);
 

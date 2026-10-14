@@ -1,4 +1,5 @@
 import { sign } from 'node:crypto';
+import webpush from 'web-push';
 import { readFileSync } from 'node:fs';
 import { connect, type ClientHttp2Session } from 'node:http2';
 import { config } from '../config.js';
@@ -44,8 +45,14 @@ function loadServiceAccount(): ServiceAccount | null {
 }
 const fcmAccount = loadServiceAccount();
 
-export const pushEnabled = !!signingKey || !!fcmAccount;
-const platforms = [...(signingKey ? ['ios'] : []), ...(fcmAccount ? ['android'] : [])];
+// Web Push (PWA instalado no iPhone pelo Safari, Chrome, Edge...): padrão aberto com chaves VAPID.
+const { publicKey: vapidPublic, privateKey: vapidPrivate, subject: vapidSubject } = config.webPush;
+const webPushEnabled = !!vapidPublic && !!vapidPrivate;
+if (webPushEnabled) webpush.setVapidDetails(vapidSubject, vapidPublic!, vapidPrivate!);
+export const vapidPublicKey = webPushEnabled ? vapidPublic! : null;
+
+export const pushEnabled = !!signingKey || !!fcmAccount || webPushEnabled;
+const platforms = [...(signingKey ? ['ios'] : []), ...(fcmAccount ? ['android'] : []), ...(webPushEnabled ? ['web'] : [])];
 
 // O token da Apple vale 1 h e não pode ser trocado mais de uma vez a cada 20 min: renova a cada 50 min.
 let jwt: { token: string; at: number } | null = null;
@@ -179,6 +186,22 @@ async function sendFcm(token: string, p: Payload): Promise<SendResult> {
   return { ok: false, dead, error: `FCM ${res.status} ${text.slice(0, 200)}` };
 }
 
+async function sendWeb(token: string, p: Payload): Promise<SendResult> {
+  try {
+    const subscription = JSON.parse(token) as webpush.PushSubscription;
+    await webpush.sendNotification(subscription, JSON.stringify({ title: p.title, body: p.body, tag: p.threadId, data: p.data ?? {} }), {
+      TTL: 86400,
+      urgency: 'high',
+      ...(p.threadId && { topic: p.threadId.slice(0, 32) }),
+    });
+    return { ok: true };
+  } catch (error) {
+    const status = (error as { statusCode?: number }).statusCode ?? 0;
+    // 404/410: a inscrição não existe mais (app removido, permissão retirada).
+    return { ok: false, dead: status === 404 || status === 410, error: `WebPush ${status} ${(error as Error).message}` };
+  }
+}
+
 async function sendToUsers(userIds: string[], build: (userId: string) => Payload | null) {
   if (!pushEnabled || userIds.length === 0) return;
   const devices = await prisma.pushDevice.findMany({
@@ -191,7 +214,12 @@ async function sendToUsers(userIds: string[], build: (userId: string) => Payload
       if (!payload) return;
       let res: SendResult;
       try {
-        res = d.platform === 'android' ? await sendFcm(d.token, payload) : await sendApns(d.token, payload);
+        res =
+          d.platform === 'android'
+            ? await sendFcm(d.token, payload)
+            : d.platform === 'web'
+              ? await sendWeb(d.token, payload)
+              : await sendApns(d.token, payload);
       } catch (error) {
         res = { ok: false, error: (error as Error).message };
       }

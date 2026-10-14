@@ -58,6 +58,8 @@ export default defineNuxtConfig({
       navigateFallback: '/',
       // Nunca interceptar a API nem o WebSocket com o service worker.
       navigateFallbackDenylist: [/^\/api/, /^\/socket\.io/, /^\/uploads/],
+      // Notificações com o app fechado (Web Push): public/sw-push.js entra no service worker.
+      importScripts: ['/sw-push.js'],
       globPatterns: ['**/*.{js,css,html,png,svg,ico,webmanifest}'],
     },
     devOptions: { enabled: false },

@@ -36,8 +36,10 @@ onMounted(() => {
   canNotify.value = typeof Notification !== 'undefined' && Notification.permission === 'default';
 });
 
+// No iPhone (PWA) a permissão só pode ser pedida a partir de um toque: por isso o botão.
+const webPush = useWebPush();
 async function enableNotifications() {
-  const result = await Notification.requestPermission();
+  const result = await webPush.enable().catch(() => 'default');
   canNotify.value = result === 'default';
 }
 
