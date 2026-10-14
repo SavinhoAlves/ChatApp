@@ -37,6 +37,13 @@ const parsed = z
     // Recomendado: segredo compartilhado com o coturn (use-auth-secret). Cada pessoa recebe uma senha
     // temporária assinada com ele. Sem o segredo, usa TURN_USERNAME/TURN_CREDENTIAL fixos.
     TURN_SECRET: z.preprocess(emptyToUndefined, z.string().optional()),
+    // Notificações do app de iPhone (APNs). Chave .p8 criada em developer.apple.com › Keys.
+    APNS_KEY_ID: z.preprocess(emptyToUndefined, z.string().optional()),
+    APNS_TEAM_ID: z.preprocess(emptyToUndefined, z.string().optional()),
+    APNS_KEY_FILE: z.preprocess(emptyToUndefined, z.string().optional()),
+    APNS_BUNDLE_ID: z.string().default('com.savioalves.chat'),
+    // true só para builds de desenvolvimento do Xcode; TestFlight e App Store usam produção.
+    APNS_SANDBOX: z.enum(['true', 'false']).default('false'),
     TURN_USERNAME: z.preprocess(emptyToUndefined, z.string().optional()),
     TURN_CREDENTIAL: z.preprocess(emptyToUndefined, z.string().optional()),
   })
@@ -76,6 +83,13 @@ export const config = {
     callmebotApiKey: env.CALLMEBOT_APIKEY,
     // Ligação com o código só existe com Twilio (ou no console, em desenvolvimento).
     canCall: env.SMS_PROVIDER === 'twilio' || env.SMS_PROVIDER === 'console',
+  },
+  apns: {
+    keyId: env.APNS_KEY_ID,
+    teamId: env.APNS_TEAM_ID,
+    keyFile: env.APNS_KEY_FILE ? resolve(process.cwd(), env.APNS_KEY_FILE) : undefined,
+    bundleId: env.APNS_BUNDLE_ID,
+    host: env.APNS_SANDBOX === 'true' ? 'https://api.sandbox.push.apple.com' : 'https://api.push.apple.com',
   },
   turn: {
     urls: (env.TURN_URL ?? '')

@@ -11,6 +11,7 @@ import { config, MAX_UPLOAD_SIZE } from './config.js';
 import { prisma } from './db.js';
 import { HttpError } from './errors.js';
 import { setupRealtime } from './realtime.js';
+import { accountRoutes } from './routes/account.js';
 import { authRoutes } from './routes/auth.js';
 import { businessRoutes } from './routes/business.js';
 import { callRoutes } from './routes/calls.js';
@@ -62,6 +63,7 @@ await registerAuth(app);
 await app.register(
   async (api) => {
     api.get('/health', async () => ({ ok: true }));
+    await api.register(accountRoutes);
     await api.register(authRoutes);
     await api.register(businessRoutes);
     await api.register(callRoutes);

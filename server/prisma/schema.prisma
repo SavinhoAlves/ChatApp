@@ -53,6 +53,7 @@ model User {
   business       BusinessProfile?
   phoneContacts  PhoneContact[]
   stickers       UserSticker[]
+  pushDevices    PushDevice[]
   chatLists      ChatList[]
   reportsMade    Report[]         @relation("ReportsMade")
   reportsAgainst Report[]         @relation("ReportsAgainst")
@@ -211,7 +212,8 @@ model Session {
   lastActiveAt DateTime  @default(now())
   revokedAt    DateTime?
 
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user        User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  pushDevices PushDevice[]
 
   @@index([userId])
 }
@@ -326,4 +328,21 @@ model UserSticker {
 
   @@unique([userId, url])
   @@index([userId, createdAt])
+}
+
+// Aparelho que recebe notificações nativas (app de iPhone, APNs). Fica preso à sessão: sair do aparelho
+// (sessão revogada) para de notificar, e cada token aponta para um único usuário.
+model PushDevice {
+  id        String   @id @default(cuid())
+  userId    String
+  sessionId String
+  token     String   @unique
+  platform  String // 'ios'
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  session Session @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
 }

@@ -10,3 +10,8 @@ server/uploads/
 .DS_Store
 .claude/
 *.tsbuildinfo
+
+# Chaves da Apple (APNs, App Store Connect, certificado): nunca no repositório
+*.p8
+ios_cert_key
+ios_cert_key.pub

@@ -15,6 +15,7 @@ Crie em <https://developer.apple.com/programs/> (US$ 99/ano). A aprovação pode
 <https://developer.apple.com/account/resources/identifiers> › **+** › *App IDs* › *App*:
 - Description: `Chat`
 - Bundle ID (Explicit): `com.savioalves.chat`
+- Em *Capabilities*, marque **Push Notifications** (sem isso as notificações não chegam e o build falha).
 
 ### 3. Criar o app no App Store Connect
 <https://appstoreconnect.apple.com/apps> › **+** › *Novo app*:
@@ -47,6 +48,33 @@ Repositório › *Settings* › *Secrets and variables* › *Actions* › **New 
 
 Os segredos não aparecem para ninguém, nem com o repositório público.
 
+### 7. Chave de notificações (APNs) — vai na VPS, não no GitHub
+<https://developer.apple.com/account/resources/authkeys/list> › **+**:
+- Nome: `Chat APNs` · marque **Apple Push Notifications service (APNs)** › *Configure* › ambiente *Sandbox & Production*
+- Baixe o `AuthKey_XXXX.p8` (só uma vez) e anote o **Key ID**. O **Team ID** fica em *Membership details*.
+
+Copie a chave para a VPS e proteja o arquivo (no Windows, pelo PowerShell ou Git Bash):
+
+```bash
+scp AuthKey_XXXX.p8 savio@SEU_IP:~/chat/server/apns.p8
+```
+
+Na VPS:
+
+```bash
+chmod 600 ~/chat/server/apns.p8
+```
+
+No `~/chat/server/.env`:
+
+```env
+APNS_KEY_ID=KEY_ID_DA_CHAVE
+APNS_TEAM_ID=SEU_TEAM_ID
+APNS_KEY_FILE=./apns.p8
+```
+
+E reinicie: `pm2 restart chat --update-env`.
+
 ## Gerar uma versão
 
 Repositório › *Actions* › **iOS (TestFlight)** › *Run workflow* › informe a versão (ex.: `1.0.0`).
@@ -58,6 +86,7 @@ Leva uns 15 min. Depois o App Store Connect processa o build (mais uns 10–30 m
 2. No iPhone, instale o app **TestFlight** da App Store e aceite o convite.
 
 ## Antes de publicar na App Store (pendente)
-- Excluir a conta pelo próprio app (exigência da Apple).
-- Notificações nativas (APNs).
-- Política de privacidade publicada e capturas de tela.
+- Política de privacidade publicada (link no App Store Connect).
+- Capturas de tela do iPhone e descrição do app.
+
+Já atendidos: excluir a conta pelo app (Ajustes › Conta) e notificações nativas.

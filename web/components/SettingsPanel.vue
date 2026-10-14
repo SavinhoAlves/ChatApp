@@ -18,6 +18,7 @@ import {
   Smartphone,
   Store,
   Trash2,
+  UserX,
   Wallet,
 } from '@lucide/vue';
 import type { Component } from 'vue';
@@ -140,6 +141,24 @@ async function removePhoto() {
 
 // ---- Conta ----
 const showDevices = ref(false);
+
+// Exigência da App Store: excluir a conta pelo próprio app. Pede para digitar EXCLUIR.
+async function deleteMyAccount() {
+  const typed = await prompt({
+    title: 'Excluir minha conta',
+    message:
+      'Sua conta é apagada para sempre: conversas individuais (para você e para a outra pessoa), mensagens que você enviou em grupos, contatos e figurinhas. Não dá para desfazer. Digite EXCLUIR para confirmar.',
+    placeholder: 'EXCLUIR',
+    confirmLabel: 'Excluir conta',
+    maxLength: 10,
+  });
+  if (typed === null) return;
+  if (typed.toUpperCase() !== 'EXCLUIR') {
+    await alert({ title: 'Conta mantida', message: 'O texto não confere. Para excluir, digite EXCLUIR.' });
+    return;
+  }
+  await run(() => auth.deleteAccount());
+}
 
 async function logoutOthers() {
   const ok = await confirm({
@@ -304,6 +323,13 @@ const isMac = import.meta.client && /Mac|iPhone|iPad/.test(navigator.platform);
             <span class="settings-text">
               <strong>Desconectar outros aparelhos</strong>
               <small>Mantém só este conectado</small>
+            </span>
+          </button>
+          <button class="settings-item danger" type="button" @click="deleteMyAccount">
+            <UserX :size="20" :stroke-width="1.8" class="settings-icon" />
+            <span class="settings-text">
+              <strong>Excluir minha conta</strong>
+              <small>Apaga sua conta e seus dados para sempre</small>
             </span>
           </button>
         </nav>

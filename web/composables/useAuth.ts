@@ -185,5 +185,11 @@ export function useAuth() {
     await navigateTo('/login');
   }
 
-  return { token, me, api, upload, uploadAvatar, removeAvatar, updateProfile, requestCode, verifyCode, completeProfile, createQr, pollQr, restore, logout };
+  /** Configurações › Conta › Excluir minha conta: apaga no servidor e sai deste aparelho. */
+  async function deleteAccount() {
+    await api('/me', { method: 'DELETE', body: { confirm: 'EXCLUIR' } });
+    await logout();
+  }
+
+  return { token, me, api, upload, uploadAvatar, removeAvatar, updateProfile, requestCode, verifyCode, completeProfile, createQr, pollQr, restore, logout, deleteAccount };
 }

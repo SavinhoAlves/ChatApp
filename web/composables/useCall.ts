@@ -350,6 +350,8 @@ export function bindCallListeners(s: Socket) {
   const c = useCall();
 
   s.on('call:incoming', (p: { callId: string; conversationId: string | null; video: boolean; group: boolean; from: CallPerson }) => {
+    // A mesma ligação de novo (reconectou enquanto tocava): já está na tela, não é "ocupado".
+    if (c.call.value?.id === p.callId) return;
     // Já em outra ligação: recusa (ocupado).
     if (c.call.value && c.call.value.status !== 'ended') {
       s.emit('call:decline', { callId: p.callId }, () => {});

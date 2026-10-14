@@ -28,6 +28,8 @@ const config: CapacitorConfig = {
   plugins: {
     // App escuro: texto branco na barra de status.
     StatusBar: { style: 'DARK', overlaysWebView: true },
+    // App aberto: o aviso nativo não aparece (a própria tela já mostra a mensagem/ligação).
+    PushNotifications: { presentationOptions: [] },
   },
 };
 

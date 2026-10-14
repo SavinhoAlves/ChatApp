@@ -7,6 +7,7 @@ import { HttpError } from '../errors.js';
 import { emitToUsers, getPresence } from '../io.js';
 import { isBlocked, listBlockedIds } from './blocks.js';
 import { contactNameMap, isContact } from './contacts.js';
+import { pushNewMessage } from './push.js';
 import { isStickerId, stickerUrl, USER_STICKER_PREFIX, userStickerUrl } from './stickers.js';
 
 /** Remove o arquivo de um anexo do disco (se houver). Nunca derruba a exclusão da mensagem. */
@@ -334,6 +335,8 @@ export async function sendMessage(input: {
     clientId: input.clientId,
   });
   if (!message) throw new HttpError(500, 'Falha ao enviar mensagem');
+  // Notificação nativa (iPhone) em segundo plano: não atrasa a resposta para quem enviou.
+  void pushNewMessage(created.id).catch((err) => console.error('Falha ao notificar:', err));
   return serializeMessage(message, input.senderId);
 }
 

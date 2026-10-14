@@ -8,6 +8,7 @@ import { userRoom } from './io.js';
 import { isBlocked } from './services/blocks.js';
 import { getMemberIds } from './services/chat.js';
 import { contactNameMap } from './services/contacts.js';
+import { pushIncomingCall } from './services/push.js';
 
 /**
  * Ligações de voz e vídeo (WebRTC). O servidor só faz a "sinalização": avisa quem está sendo chamado e
@@ -30,6 +31,8 @@ type Room = {
   ringing: Set<string>;
   /** Liga por link: qualquer pessoa logada com o link pode entrar. */
   fromLink: boolean;
+  /** Quem ligou: reenviado a quem abre o app pela notificação enquanto ainda está chamando. */
+  from?: { id: string; displayName: string; avatarUrl: string | null };
   ringTimer?: ReturnType<typeof setTimeout>;
 };
 
@@ -72,6 +75,13 @@ function roomInfo(room: Room) {
 
 export function bindCallEvents(io: Server, socket: Socket, log: FastifyBaseLogger) {
   const userId = socket.data.userId as string;
+
+  // Abriu o app (ex.: tocou na notificação da ligação) com uma chamada ainda tocando: toca aqui também.
+  for (const room of rooms.values()) {
+    if (room.ringing.has(userId) && room.from) {
+      socket.emit('call:incoming', { ...roomInfo(room), from: room.from, group: room.ringing.size + room.participants.size > 2 });
+    }
+  }
 
   const handle =
     <T>(schema: z.ZodType<T>, fn: (data: T) => Promise<unknown>) =>
@@ -140,11 +150,10 @@ export function bindCallEvents(io: Server, socket: Socket, log: FastifyBaseLogge
       rooms.set(room.id, room);
 
       const caller = await prisma.user.findUnique({ where: { id: userId }, select: { displayName: true, avatarUrl: true } });
-      toUsers(allowed, 'call:incoming', {
-        ...roomInfo(room),
-        from: { id: userId, displayName: caller?.displayName ?? 'Alguém', avatarUrl: caller?.avatarUrl ?? null },
-        group: allowed.length > 1,
-      });
+      room.from = { id: userId, displayName: caller?.displayName ?? 'Alguém', avatarUrl: caller?.avatarUrl ?? null };
+      toUsers(allowed, 'call:incoming', { ...roomInfo(room), from: room.from, group: allowed.length > 1 });
+      // App fechado no iPhone: o aviso nativo é o que faz a pessoa saber que está tocando.
+      void pushIncomingCall(userId, room.from.displayName, allowed, data.video).catch((err) => log.error(err));
       room.ringTimer = setTimeout(() => {
         // Ninguém atendeu: chamada perdida.
         if (rooms.get(room.id) === room && room.participants.size <= 1) endRoom(room, 'missed');

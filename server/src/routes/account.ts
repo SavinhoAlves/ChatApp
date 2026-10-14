@@ -1,0 +1,29 @@
+import type { FastifyInstance } from 'fastify';
+import { z } from 'zod';
+import { prisma } from '../db.js';
+import { validate } from '../errors.js';
+import { deleteAccount } from '../services/account.js';
+
+// A pessoa digita "EXCLUIR" no app: evita apagar a conta por um toque sem querer.
+const deleteSchema = z.object({ confirm: z.literal('EXCLUIR', { message: 'Digite EXCLUIR para confirmar' }) });
+// Token do APNs: 64 caracteres hexadecimais hoje; aceitamos até 200 para tokens futuros.
+const pushDeviceSchema = z.object({ token: z.string().regex(/^[0-9a-fA-F]{32,200}$/), platform: z.literal('ios') });
+
+export async function accountRoutes(app: FastifyInstance) {
+  const auth = { preHandler: [app.authenticate] };
+
+  // Configurações › Conta › Excluir minha conta.
+  app.delete('/me', { ...auth, config: { rateLimit: { max: 5, timeWindow: '10 minutes' } } }, async (request) => {
+    validate(deleteSchema, request.body ?? {});
+    await deleteAccount(request.user.sub);
+    return { ok: true };
+  });
+
+  // App de iPhone: registra (ou atualiza) o aparelho que recebe as notificações desta sessão.
+  app.post('/push/devices', auth, async (request) => {
+    const { token, platform } = validate(pushDeviceSchema, request.body);
+    const data = { userId: request.user.sub, sessionId: request.user.sid!, platform };
+    await prisma.pushDevice.upsert({ where: { token }, create: { token, ...data }, update: data });
+    return { ok: true };
+  });
+}
