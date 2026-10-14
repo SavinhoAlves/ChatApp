@@ -19,3 +19,8 @@ android-keystore/
 *.jks
 *.keystore
 dist-android/
+
+# Firebase: configuração do app Android e conta de serviço do servidor
+google-services.json
+*service-account*.json
+*firebase-adminsdk*.json

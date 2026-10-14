@@ -1,6 +1,7 @@
+import { existsSync } from 'node:fs';
 import type { CapacitorConfig } from '@capacitor/cli';
 
-// App nativo (iPhone) do Chat. O app abre o servidor do Chat por dentro (server.url): telas, API e
+// App nativo (iPhone e Android) do Chat. O app abre o servidor do Chat por dentro (server.url): telas, API e
 // tempo real continuam na mesma origem, e mudanças de visual chegam sem publicar versão nova na loja.
 // Os plugins nativos (barra de status, notificações…) funcionam porque o Capacitor injeta a ponte na página.
 //
@@ -20,6 +21,11 @@ const config: CapacitorConfig = {
     allowNavigation: [new URL(serverUrl).hostname],
     // Sem internet ou servidor fora do ar: página guardada no próprio app (public/offline.html).
     errorPath: 'offline.html',
+  },
+  android: {
+    // Só APKs com Firebase (google-services.json) podem registrar notificações; sem ele o app fecharia.
+    // A página lê esta marca no User-Agent (ver plugins/push.client.ts).
+    ...(existsSync('android/app/google-services.json') && { appendUserAgent: 'ChatPush/fcm' }),
   },
   ios: {
     // O CSS já cuida das áreas do notch e da barra de baixo (env(safe-area-inset-*)).

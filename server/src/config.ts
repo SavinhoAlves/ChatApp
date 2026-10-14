@@ -38,6 +38,8 @@ const parsed = z
     // temporária assinada com ele. Sem o segredo, usa TURN_USERNAME/TURN_CREDENTIAL fixos.
     TURN_SECRET: z.preprocess(emptyToUndefined, z.string().optional()),
     // Notificações do app de iPhone (APNs). Chave .p8 criada em developer.apple.com › Keys.
+    // Notificações do app Android (Firebase Cloud Messaging): JSON da conta de serviço do Firebase.
+    FCM_SERVICE_ACCOUNT_FILE: z.preprocess(emptyToUndefined, z.string().optional()),
     APNS_KEY_ID: z.preprocess(emptyToUndefined, z.string().optional()),
     APNS_TEAM_ID: z.preprocess(emptyToUndefined, z.string().optional()),
     APNS_KEY_FILE: z.preprocess(emptyToUndefined, z.string().optional()),
@@ -84,6 +86,7 @@ export const config = {
     // Ligação com o código só existe com Twilio (ou no console, em desenvolvimento).
     canCall: env.SMS_PROVIDER === 'twilio' || env.SMS_PROVIDER === 'console',
   },
+  fcm: { serviceAccountFile: env.FCM_SERVICE_ACCOUNT_FILE ? resolve(process.cwd(), env.FCM_SERVICE_ACCOUNT_FILE) : undefined },
   apns: {
     keyId: env.APNS_KEY_ID,
     teamId: env.APNS_TEAM_ID,

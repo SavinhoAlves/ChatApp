@@ -6,8 +6,11 @@ import { deleteAccount } from '../services/account.js';
 
 // A pessoa digita "EXCLUIR" no app: evita apagar a conta por um toque sem querer.
 const deleteSchema = z.object({ confirm: z.literal('EXCLUIR', { message: 'Digite EXCLUIR para confirmar' }) });
-// Token do APNs: 64 caracteres hexadecimais hoje; aceitamos até 200 para tokens futuros.
-const pushDeviceSchema = z.object({ token: z.string().regex(/^[0-9a-fA-F]{32,200}$/), platform: z.literal('ios') });
+// iPhone (APNs): hexadecimal. Android (FCM): letras, números, ":", "-" e "_" (uns 160 caracteres).
+const pushDeviceSchema = z.discriminatedUnion('platform', [
+  z.object({ platform: z.literal('ios'), token: z.string().regex(/^[0-9a-fA-F]{32,200}$/) }),
+  z.object({ platform: z.literal('android'), token: z.string().regex(/^[\w:-]{20,4096}$/) }),
+]);
 
 export async function accountRoutes(app: FastifyInstance) {
   const auth = { preHandler: [app.authenticate] };
@@ -19,7 +22,7 @@ export async function accountRoutes(app: FastifyInstance) {
     return { ok: true };
   });
 
-  // App de iPhone: registra (ou atualiza) o aparelho que recebe as notificações desta sessão.
+  // App nativo (iPhone/Android): registra (ou atualiza) o aparelho que recebe as notificações desta sessão.
   app.post('/push/devices', auth, async (request) => {
     const { token, platform } = validate(pushDeviceSchema, request.body);
     const data = { userId: request.user.sub, sessionId: request.user.sid!, platform };

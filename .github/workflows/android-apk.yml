@@ -4,6 +4,7 @@
 # Segredos (Settings › Secrets and variables › Actions):
 #   ANDROID_KEYSTORE_BASE64    conteúdo de android-keystore/chat-release.jks.base64
 #   ANDROID_KEYSTORE_PASSWORD  senha em android-keystore/senha.txt
+#   GOOGLE_SERVICES_JSON       conteúdo do google-services.json do Firebase (notificações; opcional)
 # A MESMA chave precisa assinar todas as versões, senão o Android não deixa atualizar o app.
 
 name: Android (APK)
@@ -50,6 +51,12 @@ jobs:
           node-version: 22
           cache: npm
           cache-dependency-path: web/package-lock.json
+
+      - name: Firebase (notificações)
+        env:
+          GOOGLE_SERVICES_JSON: ${{ secrets.GOOGLE_SERVICES_JSON }}
+        run: |
+          if [ -n "$GOOGLE_SERVICES_JSON" ]; then printf '%s' "$GOOGLE_SERVICES_JSON" > android/app/google-services.json; echo "com Firebase"; else echo "sem Firebase: APK sem notificações"; fi
 
       - name: Front-end e projeto Android
         run: |

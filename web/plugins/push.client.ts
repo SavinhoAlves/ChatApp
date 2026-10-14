@@ -1,12 +1,15 @@
 import { Capacitor } from '@capacitor/core';
 import { PushNotifications } from '@capacitor/push-notifications';
 
-// Notificações nativas do app de iPhone (APNs). Só roda dentro do app (Capacitor); no navegador não faz nada.
+// Notificações nativas do app (iPhone pelo APNs, Android pelo Firebase). Só roda dentro do app (Capacitor); no navegador não faz nada.
 // Logado: pede permissão, registra o aparelho no servidor (preso a esta sessão) e, ao tocar no aviso,
 // abre a conversa. Com o app aberto o aviso não aparece (presentationOptions vazio no capacitor.config.ts).
 export default defineNuxtPlugin(() => {
-  // Android precisa do Firebase (google-services.json); sem ele, registrar derruba o app. Por ora, só iPhone.
-  if (!isNativeApp() || Capacitor.getPlatform() !== 'ios') return;
+  if (!isNativeApp()) return;
+  const platform = Capacitor.getPlatform();
+  // Android: só o APK com Firebase (marca no User-Agent, ver capacitor.config.ts). Sem ele, registrar derruba o app.
+  if (platform === 'android' && !navigator.userAgent.includes('ChatPush/fcm')) return;
+  if (platform !== 'ios' && platform !== 'android') return;
   const auth = useAuth();
   let listening = false;
 
@@ -25,7 +28,7 @@ export default defineNuxtPlugin(() => {
     if (!listening) {
       listening = true;
       await PushNotifications.addListener('registration', ({ value }) => {
-        void auth.api('/push/devices', { method: 'POST', body: { token: value, platform: 'ios' } }).catch(() => {});
+        void auth.api('/push/devices', { method: 'POST', body: { token: value, platform } }).catch(() => {});
       });
       await PushNotifications.addListener('pushNotificationActionPerformed', ({ notification }) => {
         const id = notification.data?.conversationId;
