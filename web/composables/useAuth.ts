@@ -17,6 +17,14 @@ type RequestOptions = {
   query?: Record<string, unknown>;
 };
 
+/** Guarda (ou apaga) o login no armazenamento nativo do app. No navegador não faz nada. */
+async function saveNativeToken(value: string | null) {
+  if (!isNativeApp()) return;
+  const { Preferences } = await import('@capacitor/preferences');
+  if (value) await Preferences.set({ key: TOKEN_KEY, value });
+  else await Preferences.remove({ key: TOKEN_KEY });
+}
+
 export function useAuth() {
   const token = useState<string | null>('auth.token', () =>
     import.meta.client ? localStorage.getItem(TOKEN_KEY) : null,
@@ -27,6 +35,8 @@ export function useAuth() {
     token.value = value;
     if (value) localStorage.setItem(TOKEN_KEY, value);
     else localStorage.removeItem(TOKEN_KEY);
+    // App nativo: cópia no armazenamento do Android/iPhone (fora do navegador interno), ver plugins/session.client.ts.
+    void saveNativeToken(value);
   }
 
   async function api<T>(path: string, options: RequestOptions = {}): Promise<T> {

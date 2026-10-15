@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { Capacitor, registerPlugin } from '@capacitor/core';
 import { ArrowLeft, Camera, IdCard, Lock, Phone, RefreshCw, Smartphone, X } from '@lucide/vue';
 import QRCode from 'qrcode';
 import { formatPhone } from '~/utils/phone';
@@ -191,7 +192,21 @@ watch(method, (m) => {
 // Computador: só QR code (o número/código é coisa do app no celular, como no WhatsApp).
 onMounted(() => {
   if (method.value === 'qr') void startQr();
+  else void suggestPhone();
 });
+
+// App Android: a janelinha do Google mostra o número do aparelho e preenche com um toque
+// (plugin nativo PhoneHint, APK 1.0.4+). Sem chip compatível, ou recusando, segue digitando normalmente.
+async function suggestPhone() {
+  if (!isNativeApp() || Capacitor.getPlatform() !== 'android' || phone.value) return;
+  try {
+    const PhoneHint = registerPlugin<{ request(): Promise<{ phone: string }> }>('PhoneHint');
+    const { phone: hint } = await PhoneHint.request();
+    if (hint && !phone.value) phone.value = hint;
+  } catch {
+    // APK antigo (sem o plugin) ou Google Play indisponível
+  }
+}
 onBeforeUnmount(() => {
   stopQr();
   clearInterval(resendTimer);
