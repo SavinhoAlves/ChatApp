@@ -6,6 +6,7 @@ import fastifyStatic from '@fastify/static';
 import Fastify from 'fastify';
 import { Redis } from 'ioredis';
 import { registerAuth } from './auth.js';
+import { appUpdateRoutes } from './routes/appUpdate.js';
 import { sweepExpiredMessages } from './services/conversationTools.js';
 import { sweepExpiredStatuses } from './services/status.js';
 import { config, MAX_UPLOAD_SIZE } from './config.js';
@@ -66,6 +67,7 @@ await app.register(
   async (api) => {
     api.get('/health', async () => ({ ok: true }));
     await api.register(accountRoutes);
+    await api.register(appUpdateRoutes);
     await api.register(authRoutes);
     await api.register(businessRoutes);
     await api.register(callRoutes);

@@ -24,3 +24,6 @@ dist-android/
 google-services.json
 *service-account*.json
 *firebase-adminsdk*.json
+
+# APKs publicados na VPS (atualização automática)
+server/apk/

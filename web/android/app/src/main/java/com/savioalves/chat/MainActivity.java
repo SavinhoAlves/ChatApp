@@ -9,6 +9,8 @@ public class MainActivity extends BridgeActivity {
     public void onCreate(Bundle savedInstanceState) {
         // Plugin próprio: número do aparelho no cadastro (Phone Number Hint do Google).
         registerPlugin(PhoneHintPlugin.class);
+        // Plugin próprio: atualização do APK baixada do servidor.
+        registerPlugin(AppUpdatePlugin.class);
         super.onCreate(savedInstanceState);
     }
 }
