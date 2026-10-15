@@ -48,12 +48,23 @@ export interface Prefs {
   appColor: AppColor;
 }
 
-const defaults: Prefs = { enterToSend: true, wallpaper: 'doodle', conversationThemes: {}, appColor: 'roxo' };
+// Padrão: verde-água, a cor da logo do Zynko.
+const defaults: Prefs = { enterToSend: true, wallpaper: 'doodle', conversationThemes: {}, appColor: 'turquesa' };
+// Por um tempo o padrão foi roxo e pode ter ficado salvo sem a pessoa escolher: volta uma vez para o da logo.
+const COLOR_FIX_KEY = 'zynko.colorFix';
 
 function read(): Prefs {
   if (!import.meta.client) return { ...defaults };
   try {
-    return { ...defaults, ...JSON.parse(localStorage.getItem(PREFS_KEY) ?? '{}') };
+    const stored = { ...defaults, ...JSON.parse(localStorage.getItem(PREFS_KEY) ?? '{}') } as Prefs;
+    if (!localStorage.getItem(COLOR_FIX_KEY)) {
+      localStorage.setItem(COLOR_FIX_KEY, '1');
+      if (stored.appColor === 'roxo') {
+        stored.appColor = 'turquesa';
+        localStorage.setItem(PREFS_KEY, JSON.stringify(stored));
+      }
+    }
+    return stored;
   } catch {
     return { ...defaults };
   }
