@@ -375,12 +375,21 @@ export function useChat() {
     sortConversations();
   }
 
+  // Envio como no WhatsApp: sem internet = falhou (!); internet instável = relógio, e o app continua
+  // tentando sozinho (a cada reconexão e de tempos em tempos) por até 2 minutos.
+  const GIVE_UP_MS = 2 * 60_000;
+  const firstTry = new Map<string, number>();
   function transmit(temp: Message) {
+    const item = () => messages.value[temp.conversationId]?.find((x) => x.clientId === temp.clientId);
     const fail = () => {
-      const item = messages.value[temp.conversationId]?.find((x) => x.clientId === temp.clientId);
-      if (item && item.status === 'pending') item.status = 'failed';
+      const m = item();
+      if (m && m.status === 'pending') m.status = 'failed';
     };
-    if (!socket?.connected) return fail();
+    const started = firstTry.get(temp.clientId!) ?? Date.now();
+    firstTry.set(temp.clientId!, started);
+    if (!navigator.onLine || Date.now() - started > GIVE_UP_MS) return fail();
+    // Sem conexão com o servidor agora: fica "enviando" e sai quando reconectar (flushPending).
+    if (!socket?.connected) return;
 
     socket.timeout(10_000).emit(
       'message:send',
@@ -393,7 +402,15 @@ export function useChat() {
         forwarded: temp.forwarded || undefined,
       },
       (err: Error | null, res?: { ok: boolean; message?: Message }) => {
-        if (err || !res?.ok || !res.message) return fail();
+        if (res && !res.ok) return fail(); // Recusada pelo servidor (bloqueado etc.): não adianta repetir.
+        if (err || !res?.message) {
+          // Demorou (rede ruim): tenta de novo daqui a pouco, se ainda estiver pendente.
+          setTimeout(() => {
+            if (item()?.status === 'pending') transmit(temp);
+          }, 3000);
+          return;
+        }
+        firstTry.delete(temp.clientId!);
         upsertMessage({ ...res.message, clientId: temp.clientId });
       },
     );
@@ -419,7 +436,13 @@ export function useChat() {
       editedAt: null,
       attachment,
       replyTo: replyTo
-        ? { id: replyTo.id, senderId: replyTo.senderId, body: replyTo.body.slice(0, 200), deleted: false }
+        ? {
+            id: replyTo.id,
+            senderId: replyTo.senderId,
+            body: replyTo.body.slice(0, 200),
+            deleted: false,
+            attachment: replyTo.attachment ? { type: replyTo.attachment.type, url: replyTo.attachment.url, name: replyTo.attachment.name, mime: replyTo.attachment.mime } : null,
+          }
         : null,
       status: 'pending',
       forwarded: !!opts.forwarded,
@@ -434,7 +457,26 @@ export function useChat() {
     const item = messages.value[m.conversationId]?.find((x) => x.id === m.id);
     if (!item) return;
     item.status = 'pending';
+    if (item.clientId) firstTry.delete(item.clientId);
     transmit(item);
+  }
+
+  /** Reconectou: manda o que ficou pendente (relógio) e tenta de novo o que falhou por falta de internet. */
+  function flushPending() {
+    for (const list of Object.values(messages.value)) {
+      for (const m of list) {
+        if (!m.clientId || !m.id.startsWith('tmp-') || m.attachment) continue;
+        if (m.status === 'failed') retry(m);
+        else if (m.status === 'pending') transmit(m);
+      }
+    }
+  }
+  if (import.meta.client && !(globalThis as { __zynkoOffline?: boolean }).__zynkoOffline) {
+    (globalThis as { __zynkoOffline?: boolean }).__zynkoOffline = true;
+    // Caiu a internet: o que estava "enviando" vira falha (!) na hora.
+    window.addEventListener('offline', () => {
+      for (const list of Object.values(messages.value)) for (const m of list) if (m.status === 'pending' && !m.attachment) m.status = 'failed';
+    });
   }
 
   /** Como send(), mas espera a confirmação do servidor e devolve o id real da mensagem (precisa disso para a localização ao vivo). */
@@ -695,6 +737,7 @@ export function useChat() {
     s.on('connect', () => {
       connected.value = true;
       void refreshAfterConnect();
+      flushPending();
     });
     s.on('disconnect', () => {
       connected.value = false;

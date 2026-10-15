@@ -132,11 +132,38 @@ async function copyText() {
   await navigator.clipboard?.writeText(props.message.body).catch(() => {});
 }
 
+// O menu fica por cima de tudo (fora da lista), colado na bolha: abaixo dela, ou acima se não couber.
+const bubbleEl = ref<HTMLElement | null>(null);
+const menuEl = ref<HTMLElement | null>(null);
+const menuPos = ref<Record<string, string>>({});
+watch(menuOpen, async (open) => {
+  if (!open || !bubbleEl.value) return;
+  const r = bubbleEl.value.getBoundingClientRect();
+  const side: Record<string, string> = props.mine ? { right: `${Math.max(8, window.innerWidth - r.right)}px` } : { left: `${Math.max(8, r.left)}px` };
+  menuPos.value = { ...side, top: `${r.bottom + 4}px`, visibility: 'hidden' };
+  await nextTick();
+  const h = menuEl.value?.offsetHeight ?? 0;
+  const fitsBelow = r.bottom + 4 + h < window.innerHeight - 8;
+  const top = fitsBelow ? r.bottom + 4 : Math.max(8, r.top - 4 - h);
+  menuPos.value = { ...side, top: `${top}px` };
+});
+
 function closeOnOutsideClick(event: MouseEvent) {
-  if (menuOpen.value && root.value && !root.value.contains(event.target as Node)) menuOpen.value = false;
+  const t = event.target as Node;
+  if (menuOpen.value && root.value && !root.value.contains(t) && !menuEl.value?.contains(t)) menuOpen.value = false;
 }
-onMounted(() => document.addEventListener('click', closeOnOutsideClick));
-onBeforeUnmount(() => document.removeEventListener('click', closeOnOutsideClick));
+// Rolou a conversa com o menu aberto: fecha (ele não acompanha a bolha).
+const closeOnScroll = (e: Event) => {
+  if (menuOpen.value && !menuEl.value?.contains(e.target as Node)) menuOpen.value = false;
+};
+onMounted(() => {
+  document.addEventListener('click', closeOnOutsideClick);
+  document.addEventListener('scroll', closeOnScroll, true);
+});
+onBeforeUnmount(() => {
+  document.removeEventListener('click', closeOnOutsideClick);
+  document.removeEventListener('scroll', closeOnScroll, true);
+});
 
 // Figurinha: "Adicionar às favoritas" / "Remover das favoritas", como a estrela do WhatsApp.
 const stickers = useStickers();
@@ -234,6 +261,7 @@ function onTouchend() {
       <Avatar v-if="avatarUser" :name="avatarUser.displayName" :seed="avatarUser.id" :size="34" :src="avatarUser.avatarUrl" />
     </span>
     <div
+      ref="bubbleEl"
       class="bubble"
       :class="{ deleted: message.deleted, failed: message.status === 'failed', sticker: !message.deleted && message.attachment?.type === 'STICKER' }"
       :style="swipeX ? { transform: `translateX(${swipeX}px)`, transition: 'none' } : undefined"
@@ -243,6 +271,7 @@ function onTouchend() {
       @touchcancel="onTouchend"
       @contextmenu="press.onContextmenu"
     >
+      <button v-if="message.status === 'failed'" class="failed-mark" type="button" aria-label="Falha ao enviar. Tentar de novo" @click.stop="emit('retry', message)">!</button>
       <span v-if="swipeX" class="swipe-hint" :class="swipeX > 0 ? 'reply' : 'info'" :style="{ opacity: Math.min(1, Math.abs(swipeX) / SWIPE_TRIGGER) }">
         <Reply v-if="swipeX > 0" :size="18" :stroke-width="2.2" />
         <Info v-else :size="18" :stroke-width="2.2" />
@@ -252,10 +281,7 @@ function onTouchend() {
         <span v-if="senderBadge" class="sender-badge">⚡ {{ senderBadge }}</span>
       </div>
 
-      <div v-if="message.replyTo" class="bubble-reply">
-        <strong>{{ replyName }}</strong>
-        <span>{{ message.replyTo.deleted ? 'Mensagem apagada' : message.replyTo.body }}</span>
-      </div>
+      <ReplyCard v-if="message.replyTo" class="bubble-reply" :name="replyName ?? ''" :reply="message.replyTo" />
 
       <div v-if="message.forwarded && !message.deleted" class="bubble-forwarded"><Forward :size="13" :stroke-width="2.2" /> Encaminhada</div>
 
@@ -346,7 +372,8 @@ function onTouchend() {
         <MoreVertical :size="14" :stroke-width="2" />
       </button>
 
-      <div v-if="menuOpen" class="menu" role="menu">
+      <Teleport to="body">
+      <div v-if="menuOpen" ref="menuEl" class="menu msg-actions-menu" role="menu" :style="menuPos">
         <button class="menu-item" role="menuitem" type="button" @click="act('reply')"><Reply :size="15" :stroke-width="2" /> Responder</button>
         <button v-if="canForward" class="menu-item" role="menuitem" type="button" @click="act('forward')"><Forward :size="15" :stroke-width="2" /> Encaminhar</button>
         <button v-if="mine" class="menu-item" role="menuitem" type="button" @click="act('info')"><Info :size="15" :stroke-width="2" /> Dados</button>
@@ -367,10 +394,11 @@ function onTouchend() {
         <button v-if="mine && !isSticker && message.body" class="menu-item" role="menuitem" type="button" @click="act('edit')"><Pencil :size="15" :stroke-width="2" /> Editar</button>
         <button class="menu-item danger" role="menuitem" type="button" @click="act('remove')"><Trash2 :size="15" :stroke-width="2" /> Apagar</button>
       </div>
+      </Teleport>
     </div>
 
     <button v-if="message.status === 'failed'" class="retry" type="button" @click="emit('retry', message)">
-      <RotateCw :size="12" :stroke-width="2" /> Não enviada · tentar de novo
+      <RotateCw :size="12" :stroke-width="2" /> Falha ao enviar · tocar para tentar de novo
     </button>
 
     <div v-if="lightbox && message.attachment" class="overlay lightbox" @click="lightbox = false">

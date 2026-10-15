@@ -29,7 +29,7 @@ export const userSelect = {
 
 export const messageInclude = {
   receipts: { select: { userId: true, deliveredAt: true, readAt: true } },
-  replyTo: { select: { id: true, senderId: true, body: true, deletedAt: true } },
+  replyTo: { select: { id: true, senderId: true, body: true, deletedAt: true, attachmentType: true, attachmentUrl: true, attachmentName: true, attachmentMime: true } },
   stars: { select: { userId: true } },
 } satisfies Prisma.MessageInclude;
 
@@ -103,6 +103,11 @@ export function serializeMessage(m: MessageFull, viewerId: string) {
           senderId: m.replyTo.senderId,
           deleted: m.replyTo.deletedAt !== null,
           body: m.replyTo.deletedAt ? '' : m.replyTo.body.slice(0, 200),
+          // Miniatura/ícone no card de resposta (foto, vídeo, áudio, figurinha...).
+          attachment:
+            m.replyTo.deletedAt || !m.replyTo.attachmentType
+              ? null
+              : { type: m.replyTo.attachmentType, url: m.replyTo.attachmentUrl ?? undefined, name: m.replyTo.attachmentName ?? undefined, mime: m.replyTo.attachmentMime ?? undefined },
         }
       : null,
     // Só quem enviou vê o status de entrega/leitura.
@@ -259,7 +264,22 @@ async function attachmentData(attachment: AttachmentInput | null | undefined, se
   };
 }
 
-export async function sendMessage(input: {
+// O app reenvia quando a rede oscila: o mesmo clientId devolve a mesma mensagem em vez de duplicar.
+const recentSends = new Map<string, { at: number; result: Promise<Awaited<ReturnType<typeof sendMessageOnce>>> }>();
+export function sendMessage(input: Parameters<typeof sendMessageOnce>[0]) {
+  if (!input.clientId) return sendMessageOnce(input);
+  const key = `${input.senderId}:${input.clientId}`;
+  const now = Date.now();
+  for (const [k, v] of recentSends) if (now - v.at > 10 * 60_000) recentSends.delete(k);
+  const hit = recentSends.get(key);
+  if (hit) return hit.result;
+  const result = sendMessageOnce(input);
+  recentSends.set(key, { at: now, result });
+  result.catch(() => recentSends.delete(key));
+  return result;
+}
+
+async function sendMessageOnce(input: {
   conversationId: string;
   senderId: string;
   body: string;

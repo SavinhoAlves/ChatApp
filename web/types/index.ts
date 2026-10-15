@@ -23,6 +23,7 @@ export interface ReplyPreview {
   senderId: string;
   body: string;
   deleted: boolean;
+  attachment?: Pick<Attachment, 'type' | 'url' | 'name' | 'mime'> | null;
 }
 
 export type AttachmentType = 'IMAGE' | 'VIDEO' | 'AUDIO' | 'FILE' | 'LOCATION' | 'CONTACT' | 'STICKER';

@@ -533,6 +533,25 @@ function stopRecording(send: boolean) {
 
 const isTouch = () => window.matchMedia('(pointer: coarse)').matches;
 
+// Ao abrir, fotos/figurinhas/vídeos carregam depois e empurram o fim da conversa para baixo:
+// enquanto estiver "grudado" no fim, acompanha cada mudança de altura (abre sempre na última mensagem).
+let stickObserver: MutationObserver | null = null;
+const followBottom = () => {
+  if (stick.value && scroller.value) scroller.value.scrollTop = scroller.value.scrollHeight;
+};
+watch(scroller, (el, _old, onCleanup) => {
+  if (!el) return;
+  stickObserver = new MutationObserver(followBottom);
+  stickObserver.observe(el, { childList: true, subtree: true });
+  el.addEventListener('load', followBottom, true);
+  el.addEventListener('loadedmetadata', followBottom, true);
+  onCleanup(() => {
+    stickObserver?.disconnect();
+    el.removeEventListener('load', followBottom, true);
+    el.removeEventListener('loadedmetadata', followBottom, true);
+  });
+}, { immediate: true });
+
 function scrollToBottom() {
   nextTick(() => {
     const el = scroller.value;
@@ -846,6 +865,11 @@ const replyPreviewName = computed(() => (replyTo.value && conv.value ? chat.user
         />
       </template>
 
+      <!-- Alguém digitando: bolinha com três pontos pulando, como no WhatsApp -->
+      <div v-if="isTypingNow" class="msg-row typing-row" aria-live="polite" aria-label="digitando">
+        <div class="bubble typing-bubble"><span /><span /><span /></div>
+      </div>
+
       <p v-if="!list.length" class="empty-chat">Nenhuma mensagem ainda. Diga olá! 👋</p>
     </div>
 
@@ -861,10 +885,15 @@ const replyPreviewName = computed(() => (replyTo.value && conv.value ? chat.user
     <footer v-else class="composer">
       <p v-if="notice" class="composer-notice" role="alert">{{ notice }}</p>
 
-      <div v-if="replyTo || editing" class="composer-bar">
+      <ReplyCard v-if="replyTo && !editing" class="composer-bar composer-reply" :name="replyPreviewName" :reply="replyTo">
+        <button class="icon-btn reply-cancel" type="button" aria-label="Cancelar resposta" @click="cancelCompose">
+          <X :size="18" :stroke-width="2" />
+        </button>
+      </ReplyCard>
+      <div v-else-if="editing" class="composer-bar">
         <div class="composer-bar-text">
-          <strong>{{ editing ? 'Editando mensagem' : `Respondendo a ${replyPreviewName}` }}</strong>
-          <span>{{ (editing ?? replyTo)?.body }}</span>
+          <strong>Editando mensagem</strong>
+          <span>{{ editing.body }}</span>
         </div>
         <button class="icon-btn" type="button" aria-label="Cancelar" @click="cancelCompose">
           <X :size="18" :stroke-width="2" />

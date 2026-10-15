@@ -791,6 +791,59 @@ p {
   color: var(--muted);
 }
 
+/* Card de resposta: texto à esquerda, miniatura (foto/vídeo/figurinha) e o X na extrema direita. */
+.reply-card {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  overflow: hidden;
+}
+
+.reply-card-text {
+  display: grid;
+  flex: 1;
+  min-width: 0;
+}
+
+.reply-card-text strong {
+  color: var(--accent);
+  font-size: 12.5px;
+}
+
+.reply-card-text span {
+  overflow: hidden;
+  color: var(--muted);
+  font-size: 13px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.reply-card-icon {
+  margin-top: -2px;
+  vertical-align: middle;
+}
+
+.reply-card-thumb {
+  flex: none;
+  width: 44px;
+  height: 44px;
+  margin: -2px -4px -2px 0;
+  border-radius: 6px;
+  object-fit: cover;
+}
+
+.reply-card-thumb.sticker {
+  object-fit: contain;
+}
+
+.bubble-reply.reply-card {
+  display: flex;
+}
+
+.composer-reply .reply-cancel {
+  margin-left: auto;
+}
+
 .bubble-body {
   white-space: pre-wrap;
   overflow-wrap: anywhere;
@@ -1188,6 +1241,13 @@ p {
   }
 }
 
+.menu.msg-actions-menu {
+  position: fixed;
+  z-index: 60;
+  max-height: calc(100dvh - 16px);
+  overflow-y: auto;
+}
+
 .menu-item {
   display: flex;
   align-items: center;
@@ -1206,6 +1266,62 @@ p {
 
 .menu-item.danger {
   color: var(--danger);
+}
+
+.typing-bubble {
+  display: inline-flex;
+  gap: 4px;
+  align-items: center;
+  padding: 12px 14px;
+  animation: menu-in 0.18s var(--ease);
+}
+
+.typing-bubble span {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--muted);
+  animation: typing-dot 1.2s infinite ease-in-out;
+}
+
+.typing-bubble span:nth-child(2) {
+  animation-delay: 0.15s;
+}
+
+.typing-bubble span:nth-child(3) {
+  animation-delay: 0.3s;
+}
+
+@keyframes typing-dot {
+  0%,
+  60%,
+  100% {
+    opacity: 0.35;
+    transform: translateY(0);
+  }
+  30% {
+    opacity: 1;
+    transform: translateY(-4px);
+  }
+}
+
+.failed-mark {
+  position: absolute;
+  top: 50%;
+  left: -32px;
+  display: grid;
+  width: 22px;
+  height: 22px;
+  place-items: center;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: var(--danger);
+  color: #fff;
+  font-size: 14px;
+  font-weight: 800;
+  line-height: 1;
+  transform: translateY(-50%);
 }
 
 .retry {
@@ -2204,6 +2320,25 @@ body {
   border-color: transparent;
   border-radius: 50%;
   background: transparent;
+}
+
+/* Clipe (+) e emoji juntinhos à esquerda, com área de toque boa e um respiro antes do texto. */
+.composer-row {
+  gap: 2px;
+}
+
+.composer-row .icon-btn {
+  width: 40px;
+  height: 40px;
+}
+
+.composer-row .picker-anchor {
+  margin-right: 4px;
+}
+
+.composer-row .send-btn,
+.composer-row .mic-wrap {
+  margin-left: 4px;
 }
 
 .composer-row .icon-btn:hover {
