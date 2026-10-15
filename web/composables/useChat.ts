@@ -761,6 +761,20 @@ export function useChat() {
 
     if (!listenersBound) {
       listenersBound = true;
+      // Celular: em segundo plano o sistema derruba a conexão, mas o socket só percebe no próximo "ping"
+      // (até ~45 s, com "conectando…" na tela). Voltou depois de um tempo: reconecta na hora.
+      let hiddenAt = 0;
+      document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState === 'hidden') {
+          hiddenAt = Date.now();
+          return;
+        }
+        if (socket && hiddenAt && Date.now() - hiddenAt > 15_000) {
+          socket.disconnect();
+          socket.connect();
+        }
+        hiddenAt = 0;
+      });
       // Voltou para a aba com a conversa aberta: marca como lida.
       document.addEventListener('visibilitychange', () => {
         const id = activeId.value;

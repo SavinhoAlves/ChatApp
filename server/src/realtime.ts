@@ -109,7 +109,8 @@ export async function setupRealtime(app: FastifyInstance, redis?: Redis) {
       if (typeof token !== 'string') throw new Error('sem token');
       payload = app.jwt.verify<{ sub: string; sid?: string }>(token);
       if (!payload.sid) throw new Error('token sem sessão');
-    } catch {
+    } catch (error) {
+      app.log.warn({ reason: (error as Error).message, ip: socket.handshake.address }, 'socket recusado: token inválido');
       return next(new Error('unauthorized'));
     }
     try {
@@ -117,7 +118,11 @@ export async function setupRealtime(app: FastifyInstance, redis?: Redis) {
         where: { id: payload.sid },
         select: { userId: true, revokedAt: true },
       });
-      if (!session || session.revokedAt || session.userId !== payload.sub) return next(new Error('unauthorized'));
+      if (!session || session.revokedAt || session.userId !== payload.sub) {
+        const reason = !session ? 'sessão não existe' : session.revokedAt ? 'sessão desconectada' : 'sessão de outro usuário';
+        app.log.warn({ reason, sid: payload.sid }, 'socket recusado');
+        return next(new Error('unauthorized'));
+      }
       socket.data.userId = session.userId;
       socket.data.sessionId = payload.sid;
       next();
