@@ -9,6 +9,20 @@ const { conversations, archivedConversations, activeId, online, connected, openC
   useChat();
 
 const search = ref('');
+
+// "conectando…" só depois de 3 s sem conexão: ao abrir o app a conexão leva um instante e o aviso só piscava.
+const showReconnecting = ref(false);
+let reconnectTimer: ReturnType<typeof setTimeout> | undefined;
+watch(
+  connected,
+  (ok) => {
+    clearTimeout(reconnectTimer);
+    if (ok) showReconnecting.value = false;
+    else reconnectTimer = setTimeout(() => (showReconnecting.value = true), 3000);
+  },
+  { immediate: true },
+);
+onBeforeUnmount(() => clearTimeout(reconnectTimer));
 const canNotify = ref(false);
 const showDevices = ref(false);
 
@@ -109,7 +123,7 @@ function toggleArchived() {
     <header class="side-header">
       <div class="me brand-title">
         <strong>Zynko</strong>
-        <small v-if="!connected" class="warn">reconectando…</small>
+        <small v-if="showReconnecting" class="warn">conectando…</small>
       </div>
       <button class="icon-btn" type="button" title="Câmera" aria-label="Câmera" @click="emit('camera')">
         <Camera :size="21" :stroke-width="1.8" />
