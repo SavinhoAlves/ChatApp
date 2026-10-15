@@ -1,35 +1,9 @@
 <script setup lang="ts">
-import {
-  CheckCheck,
-  Download,
-  Lock,
-  MapPin,
-  MonitorSmartphone,
-  Phone,
-  QrCode,
-  Share,
-  ShieldCheck,
-  Smartphone,
-  SquarePlus,
-  Sticker,
-  Timer,
-  Users,
-  Video,
-  X,
-} from '@lucide/vue';
+import { Download, MapPin, MonitorSmartphone, QrCode, Share, ShieldCheck, Smartphone, SquarePlus, Sticker, Timer, Users, Video, X } from '@lucide/vue';
 
-// Apresentação para quem abre o endereço no navegador sem estar conectado.
-// Celular: cria a conta e instala o app. Computador: entra lendo o QR code com o celular.
+// Apresentação para quem abre o endereço no navegador sem estar conectado (layout da "página inicial
+// modernizada"). Computador: entra lendo o QR code (tela real em /login). Celular: cria a conta e instala.
 const desktop = ref(isDesktopDevice());
-
-const FEATURES = [
-  { icon: Video, title: 'Ligações de voz e vídeo', text: 'Direto entre os aparelhos, sem custo.' },
-  { icon: Users, title: 'Conversas e grupos', text: 'Lida ✓✓, “digitando…” e visto por último.' },
-  { icon: Sticker, title: 'Figurinhas', text: 'Crie as suas a partir de fotos e salve as que receber.' },
-  { icon: MapPin, title: 'Localização ao vivo', text: 'Mostre onde você está enquanto se desloca.' },
-  { icon: Timer, title: 'Mensagens temporárias', text: 'Somem sozinhas depois do tempo escolhido.' },
-  { icon: MonitorSmartphone, title: 'Também no computador', text: 'Leia o QR code e continue as conversas na tela grande.' },
-];
 
 // Instalar como app: Android usa o aviso guardado pelo plugin; no iPhone mostramos o passo a passo.
 const installPrompt = useState<{ prompt: () => Promise<void> } | null>('install.prompt', () => null);
@@ -46,109 +20,139 @@ async function install() {
   }
 }
 
-useHead({ title: 'Zynko — mensagens, ligações e figurinhas' });
+useHead({
+  title: 'Zynko: mensagens, ligações e figurinhas',
+  link: [
+    { rel: 'preconnect', href: 'https://fonts.googleapis.com' },
+    { rel: 'preconnect', href: 'https://fonts.gstatic.com', crossorigin: '' },
+    { rel: 'stylesheet', href: 'https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&display=swap' },
+  ],
+});
 </script>
 
 <template>
-  <main class="landing">
-    <header class="lp-top">
-      <span class="lp-brand"><img src="/logo.png" alt="" width="30" height="30" /> Zynko</span>
-      <NuxtLink class="lp-top-link" to="/login">
-        <QrCode v-if="desktop" :size="16" :stroke-width="2" />
-        <Smartphone v-else :size="16" :stroke-width="2" />
-        Entrar
-      </NuxtLink>
+  <div class="lp">
+    <header class="lp-head">
+      <div class="lp-wrap lp-nav">
+        <span class="lp-logo"><img src="/icon-512.png" alt="" width="30" height="30" />Zynko</span>
+        <NuxtLink class="lp-btn ghost" to="/login">
+          <QrCode v-if="desktop" :size="18" :stroke-width="2" />
+          <Smartphone v-else :size="18" :stroke-width="2" />
+          Entrar
+        </NuxtLink>
+      </div>
     </header>
 
-    <section class="lp-hero">
-      <div class="lp-copy">
-        <span class="lp-chip"><ShieldCheck :size="14" :stroke-width="2.2" /> Simples e privado</span>
-        <h1>
-          Suas conversas,<br />
-          <span class="lp-grad">sem complicação.</span>
-        </h1>
-        <p class="lp-lead">Mensagens, ligações de voz e vídeo, figurinhas e grupos num app leve, que cabe no seu celular.</p>
-
-        <div class="lp-cta">
-          <template v-if="desktop">
-            <NuxtLink class="lp-btn primary" to="/login"><QrCode :size="18" :stroke-width="2.2" /> Entrar com QR code</NuxtLink>
-          </template>
-          <template v-else>
-            <NuxtLink class="lp-btn primary" to="/login">Criar conta grátis</NuxtLink>
-            <button v-if="canInstall" class="lp-btn ghost" type="button" @click="install"><Download :size="18" :stroke-width="2.2" /> Instalar app</button>
-          </template>
+    <main>
+      <div class="lp-wrap lp-hero">
+        <div>
+          <span class="lp-pill"><ShieldCheck :size="15" :stroke-width="2" />Simples e privado</span>
+          <h1>Suas conversas, sem complicação.</h1>
+          <p class="lp-lead">Mensagens, ligações de voz e vídeo, figurinhas e grupos num app leve, que cabe no seu celular.</p>
+          <div class="lp-cta-row">
+            <NuxtLink v-if="desktop" class="lp-btn main" to="/login"><QrCode :size="18" :stroke-width="2" />Entrar com QR code</NuxtLink>
+            <template v-else>
+              <NuxtLink class="lp-btn main" to="/login">Criar conta grátis</NuxtLink>
+              <button v-if="canInstall" class="lp-btn ghost" type="button" @click="install"><Download :size="18" :stroke-width="2" />Instalar app</button>
+            </template>
+          </div>
+          <p class="lp-hint">
+            <Users :size="18" :stroke-width="2" />
+            <template v-if="desktop">Ainda não tem conta? Abra este endereço no celular e cadastre seu número.</template>
+            <template v-else>Só o seu número. Sem e-mail, sem senha.</template>
+          </p>
         </div>
 
-        <p v-if="desktop" class="lp-note"><Smartphone :size="14" :stroke-width="2" /> Ainda não tem conta? Abra este endereço no celular e cadastre seu número.</p>
-        <ul v-else class="lp-trust">
-          <li><CheckCheck :size="15" :stroke-width="2.2" /> Só o seu número</li>
-          <li><Lock :size="14" :stroke-width="2.2" /> Mensagens no seu servidor</li>
-        </ul>
-      </div>
-
-      <!-- Prévia ilustrativa do app -->
-      <div class="lp-device-wrap" aria-hidden="true">
-        <div class="lp-device">
-          <div class="lp-notch" />
-          <div class="lp-chat-top">
-            <span class="lp-ava">AS</span>
-            <span class="lp-chat-name"><strong>Ana Souza</strong><small>digitando…</small></span>
-            <Video :size="17" :stroke-width="2" />
-            <Phone :size="15" :stroke-width="2" />
+        <div class="lp-stage" aria-hidden="true">
+          <div class="lp-phone">
+            <div class="lp-screen">
+              <div class="lp-chat-head">
+                <div class="lp-av">AS</div>
+                <div><b>Ana Souza</b><small>digitando…</small></div>
+              </div>
+              <div class="lp-msgs">
+                <div class="m in">Oi! Chegou bem? 😊</div>
+                <div class="m out">Cheguei sim! Te mando a localização<em>18:42 ✓✓</em></div>
+                <div class="m out loc"><MapPin :size="16" :stroke-width="2" />Localização em tempo real</div>
+                <img class="lp-sticker" src="/stickers/joinha.svg" alt="" width="84" height="84" />
+                <div class="m in">Perfeito, te ligo mais tarde 📞</div>
+              </div>
+              <div class="lp-compose">Mensagem<i /></div>
+            </div>
           </div>
-          <div class="lp-msgs">
-            <p class="lm in">Oi! Chegou bem? 😊</p>
-            <p class="lm out">Cheguei sim! Te mando a localização <small>18:42 <CheckCheck :size="13" :stroke-width="2.4" /></small></p>
-            <p class="lm out loc"><MapPin :size="14" :stroke-width="2.4" /> Localização em tempo real</p>
-            <img class="lm-sticker" src="/stickers/joinha.svg" alt="" width="92" height="92" />
-            <p class="lm in">Perfeito, te ligo mais tarde 📞</p>
-          </div>
-          <div class="lp-composer"><span>Mensagem</span><i /></div>
+          <div class="lp-chip a"><Video :size="16" :stroke-width="2" />Chamada de vídeo</div>
+          <div class="lp-chip b"><ShieldCheck :size="16" :stroke-width="2" />Lida</div>
         </div>
-        <div class="lp-float f1"><Video :size="15" :stroke-width="2.2" /> Chamada de vídeo</div>
-        <div class="lp-float f2"><CheckCheck :size="15" :stroke-width="2.4" /> Lida</div>
       </div>
-    </section>
 
-    <section class="lp-section">
-      <h2>Tudo o que você usa no dia a dia</h2>
-      <div class="lp-features">
-        <article v-for="f in FEATURES" :key="f.title" class="lp-feature">
-          <span class="lp-icon"><component :is="f.icon" :size="20" :stroke-width="2" /></span>
+      <section>
+        <div class="lp-wrap">
+          <h2>Tudo o que você usa no dia a dia</h2>
+          <div class="lp-bento">
+            <article class="lp-card big s4">
+              <div class="ic"><Video :size="22" :stroke-width="2" /></div>
+              <h3>Ligações de voz e vídeo</h3>
+              <p>Direto entre os aparelhos, sem custo.</p>
+            </article>
+            <article class="lp-card s2">
+              <div class="ic"><Users :size="22" :stroke-width="2" /></div>
+              <h3>Conversas e grupos</h3>
+              <p>Lida ✓✓, “digitando…” e visto por último.</p>
+            </article>
+            <article class="lp-card s2">
+              <div class="ic"><Sticker :size="22" :stroke-width="2" /></div>
+              <h3>Figurinhas</h3>
+              <p>Crie as suas a partir de fotos e salve as que receber.</p>
+            </article>
+            <article class="lp-card s2">
+              <div class="ic"><MapPin :size="22" :stroke-width="2" /></div>
+              <h3>Localização ao vivo</h3>
+              <p>Mostre onde você está enquanto se desloca.</p>
+            </article>
+            <article class="lp-card s2">
+              <div class="ic"><Timer :size="22" :stroke-width="2" /></div>
+              <h3>Mensagens temporárias</h3>
+              <p>Somem sozinhas depois do tempo escolhido.</p>
+            </article>
+            <article class="lp-card big s6">
+              <div class="ic"><MonitorSmartphone :size="22" :stroke-width="2" /></div>
+              <h3>Também no computador</h3>
+              <p>Leia o QR code e continue as conversas na tela grande.</p>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <section>
+        <div class="lp-wrap lp-steps">
           <div>
-            <h3>{{ f.title }}</h3>
-            <p>{{ f.text }}</p>
+            <h2>Do celular para o computador</h2>
+            <p class="lp-sub">Sua conta mora no celular. No computador é só espelhar as conversas.</p>
           </div>
-        </article>
+          <ol>
+            <li><div><b>Crie a conta no celular</b><span>Com o seu número, em segundos.</span></div></li>
+            <li><div><b>Abra Configurações › Dispositivos</b><span>No app, toque em Conectar dispositivo.</span></div></li>
+            <li><div><b>Leia o QR code</b><span>Aponte o celular para a tela do computador. Pronto.</span></div></li>
+          </ol>
+        </div>
+      </section>
+
+      <div class="lp-wrap">
+        <div class="lp-final">
+          <h2>Comece agora</h2>
+          <p class="lp-sub">{{ desktop ? 'Já tem a conta no celular? Entre lendo o QR code.' : 'Leva menos de um minuto.' }}</p>
+          <NuxtLink class="lp-btn main" to="/login">
+            <template v-if="desktop"><QrCode :size="18" :stroke-width="2" />Mostrar QR code</template>
+            <template v-else>Criar conta grátis</template>
+          </NuxtLink>
+        </div>
       </div>
-    </section>
-
-    <section class="lp-section lp-steps-wrap">
-      <div class="lp-steps-copy">
-        <h2>Do celular para o computador</h2>
-        <p>Sua conta mora no celular. No computador é só espelhar as conversas.</p>
-      </div>
-      <ol class="lp-steps">
-        <li><span>1</span><div><strong>Crie a conta no celular</strong>Com o seu número, em segundos.</div></li>
-        <li><span>2</span><div><strong>Abra “Computador” no app</strong>Na barra de baixo, toque em Conectar dispositivo.</div></li>
-        <li><span>3</span><div><strong>Leia o QR code</strong>Aponte o celular para a tela do computador. Pronto.</div></li>
-      </ol>
-    </section>
-
-    <section class="lp-final">
-      <h2>Comece agora</h2>
-      <p>{{ desktop ? 'Já tem a conta no celular? Entre lendo o QR code.' : 'Leva menos de um minuto.' }}</p>
-      <NuxtLink class="lp-btn primary" to="/login">
-        <template v-if="desktop"><QrCode :size="18" :stroke-width="2.2" /> Mostrar QR code</template>
-        <template v-else>Criar conta grátis</template>
-      </NuxtLink>
-    </section>
-
-    <footer class="lp-footer">Zynko · mensagens em tempo real</footer>
+    </main>
+    <footer class="lp-foot">Zynko · mensagens em tempo real</footer>
 
     <!-- iPhone: instalar pelo Safari -->
     <div v-if="iosHelp" class="overlay" @click.self="iosHelp = false">
-      <div class="dialog lp-ios" role="dialog" aria-modal="true" aria-label="Instalar no iPhone">
+      <div class="dialog" role="dialog" aria-modal="true" aria-label="Instalar no iPhone">
         <header class="dialog-head">
           <h2>Instalar no iPhone</h2>
           <button class="icon-btn" type="button" aria-label="Fechar" @click="iosHelp = false"><X :size="18" /></button>
@@ -162,495 +166,517 @@ useHead({ title: 'Zynko — mensagens, ligações e figurinhas' });
         </div>
       </div>
     </div>
-  </main>
+  </div>
 </template>
 
 <style scoped>
-.landing {
+.lp {
+  --fd: 'Bricolage Grotesque', var(--font);
+  --mint: rgb(var(--accent-rgb));
+  --mint2: rgb(var(--accent-deep-rgb));
+  --line: rgb(var(--accent-light-rgb) / 0.12);
+  --card: rgb(var(--panel-rgb));
+  --glow: rgb(var(--accent-rgb) / 0.16);
   height: 100%;
   overflow-y: auto;
   overflow-x: hidden;
-  padding: 0 16px max(24px, env(safe-area-inset-bottom));
   background:
-    radial-gradient(42rem 28rem at 110% -5%, rgb(var(--accent-rgb) / 0.22), transparent 65%),
-    radial-gradient(36rem 30rem at -20% 60%, rgb(var(--accent-deep-rgb) / 0.16), transparent 65%);
+    radial-gradient(60rem 36rem at 85% -10%, var(--glow), transparent 70%),
+    radial-gradient(40rem 30rem at -10% 40%, var(--glow), transparent 70%),
+    rgb(var(--bg-rgb));
+  color: var(--text);
+  font: 400 1.0625rem/1.6 var(--font);
 }
 
-.lp-top,
-.lp-hero,
-.lp-section,
-.lp-final,
-.lp-footer {
-  max-width: 1080px;
+.lp h1,
+.lp h2,
+.lp h3 {
+  margin: 0;
+  font-family: var(--fd);
+  letter-spacing: -0.025em;
+  line-height: 1.05;
+}
+
+.lp p {
+  margin: 0;
+}
+
+.lp-wrap {
+  width: min(1120px, 100% - 2.5rem);
   margin-inline: auto;
 }
 
-/* ---- Topo ---- */
-.lp-top {
+.lp-head {
   position: sticky;
   top: 0;
-  z-index: 5;
+  z-index: 20;
+  padding-top: env(safe-area-inset-top);
+  border-bottom: 1px solid var(--line);
+  background: rgb(var(--bg-rgb) / 0.72);
+  backdrop-filter: blur(14px);
+}
+
+.lp-nav {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-inline: -16px;
-  padding: max(12px, env(safe-area-inset-top)) 16px 12px;
-  background: rgb(var(--bg-rgb) / 0.7);
-  backdrop-filter: blur(16px);
+  height: 64px;
 }
 
-@media (min-width: 1112px) {
-  .lp-top {
-    margin-inline: auto;
-    padding-inline: 0;
-    background: transparent;
-    backdrop-filter: none;
-  }
-}
-
-.lp-brand {
-  display: inline-flex;
+.lp-logo {
+  display: flex;
   align-items: center;
-  gap: 9px;
-  font-size: 18px;
-  font-weight: 800;
-  letter-spacing: -0.01em;
-}
-
-.lp-top-link {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 8px 14px;
-  border: 1px solid var(--glass-border);
-  border-radius: 999px;
-  background: var(--glass);
-  color: var(--text);
-  font-size: 14px;
-  font-weight: 600;
-  text-decoration: none;
-}
-
-/* ---- Hero ---- */
-.lp-hero {
-  display: grid;
-  gap: 44px;
-  padding: 28px 0 40px;
-}
-
-.lp-chip {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 6px 12px;
-  border: 1px solid rgb(var(--accent-rgb) / 0.3);
-  border-radius: 999px;
-  background: rgb(var(--accent-rgb) / 0.1);
-  color: var(--accent);
-  font-size: 12.5px;
-  font-weight: 700;
-}
-
-.lp-copy h1 {
-  margin: 18px 0 14px;
-  font-size: clamp(36px, 9.5vw, 60px);
-  font-weight: 800;
-  line-height: 1.04;
-  letter-spacing: -0.035em;
-}
-
-.lp-grad {
-  background: linear-gradient(100deg, rgb(var(--accent-light-rgb)), rgb(var(--accent-rgb)) 55%, rgb(var(--accent-deep-rgb)));
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
-}
-
-.lp-lead {
-  max-width: 32rem;
-  margin: 0;
-  color: var(--muted);
-  font-size: 17px;
-  line-height: 1.55;
-}
-
-.lp-cta {
-  display: grid;
-  gap: 10px;
-  margin: 26px 0 16px;
+  gap: 0.6rem;
+  font: 800 1.25rem var(--fd);
+  letter-spacing: -0.02em;
 }
 
 .lp-btn {
   display: inline-flex;
   align-items: center;
-  justify-content: center;
-  gap: 8px;
-  height: 52px;
-  padding: 0 24px;
-  border: 1px solid transparent;
-  border-radius: 16px;
-  font: inherit;
-  font-size: 16px;
-  font-weight: 700;
+  gap: 0.6rem;
+  padding: 0.85rem 1.5rem;
+  border: 0;
+  border-radius: 999px;
+  font: 600 1rem var(--font);
   text-decoration: none;
   cursor: pointer;
-  transition: transform 0.15s var(--ease), filter 0.15s var(--ease);
+  transition: transform 0.15s, box-shadow 0.2s, background 0.2s;
 }
 
-.lp-btn:active {
-  transform: scale(0.98);
+.lp-btn.main {
+  background: linear-gradient(135deg, var(--mint), var(--mint2));
+  color: #fff;
+  box-shadow: 0 8px 28px -8px var(--mint2);
 }
 
-.lp-btn.primary {
-  background: linear-gradient(135deg, rgb(var(--accent-light-rgb)), rgb(var(--accent-deep-rgb)));
-  color: var(--on-accent);
-  box-shadow: 0 10px 26px rgb(var(--accent-rgb) / 0.3);
-}
-
-.lp-btn.primary:hover {
-  filter: brightness(1.06);
+.lp-btn.main:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 12px 32px -8px var(--mint2);
 }
 
 .lp-btn.ghost {
-  border-color: var(--glass-border);
-  background: var(--glass);
+  padding: 0.55rem 1.1rem;
+  border: 1px solid var(--line);
+  background: transparent;
   color: var(--text);
+  font-size: 0.95rem;
 }
 
-.lp-note,
-.lp-trust {
-  display: flex;
-  flex-wrap: wrap;
+.lp-btn.ghost:hover {
+  background: var(--card);
+}
+
+.lp-hero {
+  display: grid;
+  grid-template-columns: 1.05fr 0.95fr;
   align-items: center;
-  gap: 6px 16px;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-  color: var(--muted);
-  font-size: 13.5px;
+  gap: 3rem;
+  padding: clamp(3rem, 8vw, 6.5rem) 0;
 }
 
-.lp-trust li,
-.lp-note {
+.lp-pill {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-}
-
-.lp-trust svg {
-  color: var(--accent);
-}
-
-/* ---- Aparelho ilustrativo ---- */
-.lp-device-wrap {
-  position: relative;
-  justify-self: center;
-  width: min(300px, 86vw);
-}
-
-.lp-device {
-  position: relative;
-  display: flex;
-  flex-direction: column;
-  border: 8px solid #0d1513;
-  border-radius: 42px;
-  background:
-    radial-gradient(20rem 16rem at 100% 0%, rgb(var(--accent-rgb) / 0.16), transparent 70%),
-    rgb(var(--bg-rgb));
-  box-shadow:
-    0 0 0 1px rgb(255 255 255 / 0.08),
-    0 40px 80px rgb(0 0 0 / 0.55),
-    0 0 60px rgb(var(--accent-rgb) / 0.12);
-  overflow: hidden;
-}
-
-.lp-notch {
-  position: absolute;
-  top: 8px;
-  left: 50%;
-  width: 84px;
-  height: 22px;
+  gap: 0.5rem;
+  margin-bottom: 1.4rem;
+  padding: 0.35rem 0.9rem;
+  border: 1px solid var(--line);
   border-radius: 999px;
-  background: #000;
-  transform: translateX(-50%);
+  background: var(--card);
+  color: var(--mint);
+  font-size: 0.9rem;
+  font-weight: 500;
 }
 
-.lp-chat-top {
-  display: flex;
-  align-items: center;
-  gap: 9px;
-  padding: 40px 14px 10px;
-  border-bottom: 1px solid var(--glass-border);
+.lp h1 {
+  max-width: 11ch;
+  font-size: clamp(2.6rem, 6.4vw, 4.8rem);
+  font-weight: 800;
+}
+
+.lp-lead {
+  max-width: 34ch;
+  margin: 1.4rem 0 2rem !important;
   color: var(--muted);
+  font-size: 1.2rem;
 }
 
-.lp-ava {
+.lp-cta-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.lp-hint {
+  display: flex;
+  gap: 0.6rem;
+  max-width: 42ch;
+  margin-top: 1.1rem !important;
+  color: var(--muted);
+  font-size: 0.92rem;
+}
+
+.lp-hint svg {
+  flex: none;
+  margin-top: 2px;
+}
+
+.lp-stage {
+  position: relative;
   display: grid;
   place-items: center;
-  width: 32px;
-  height: 32px;
-  border-radius: 50%;
-  background: linear-gradient(135deg, #22c55e, #15803d);
-  color: #fff;
-  font-size: 12px;
-  font-weight: 700;
 }
 
-.lp-chat-name {
+.lp-phone {
+  width: min(320px, 100%);
+  aspect-ratio: 9 / 17.5;
+  padding: 10px;
+  border-radius: 42px;
+  background: linear-gradient(160deg, rgb(var(--panel-rgb)), rgb(var(--bg-rgb)));
+  box-shadow: 0 40px 80px -30px #000, 0 0 0 1px var(--line), 0 0 90px -20px var(--mint2);
+}
+
+.lp-screen {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
+  border-radius: 33px;
+  background: rgb(var(--panel-rgb));
+}
+
+.lp-chat-head {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  padding: 1.3rem 1rem 0.8rem;
+  border-bottom: 1px solid var(--line);
+}
+
+.lp-av {
   display: grid;
-  flex: 1;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: #1f9d5c;
+  color: #fff;
+  font: 700 0.8rem var(--font);
+}
+
+.lp-chat-head b {
+  display: block;
+  font-size: 0.95rem;
   line-height: 1.2;
 }
 
-.lp-chat-name strong {
-  color: var(--text);
-  font-size: 14px;
-}
-
-.lp-chat-name small {
-  color: var(--accent);
-  font-size: 11.5px;
+.lp-chat-head small {
+  color: var(--mint);
+  font-size: 0.78rem;
 }
 
 .lp-msgs {
   display: flex;
+  flex: 1;
   flex-direction: column;
-  gap: 6px;
-  padding: 14px 10px;
+  justify-content: flex-end;
+  gap: 0.55rem;
+  padding: 1rem 0.9rem;
 }
 
-.lm {
-  max-width: 82%;
-  margin: 0;
-  padding: 7px 10px;
+.m {
+  max-width: 80%;
+  padding: 0.55rem 0.8rem;
   border-radius: 16px;
-  font-size: 13.5px;
+  font-size: 0.88rem;
   line-height: 1.35;
+  opacity: 0;
+  transform: translateY(8px);
+  animation: lp-in 0.45s forwards;
 }
 
-.lm small {
-  display: inline-flex;
-  align-items: center;
-  gap: 2px;
-  margin-left: 6px;
-  color: var(--muted);
-  font-size: 10.5px;
-}
-
-.lm small svg {
-  color: var(--read);
-}
-
-.lm.in {
+.m.in {
   align-self: flex-start;
-  border-top-left-radius: 5px;
+  border-bottom-left-radius: 5px;
   background: rgb(255 255 255 / 0.07);
 }
 
-.lm.out {
+.m.out {
   align-self: flex-end;
-  border-top-right-radius: 5px;
-  background: linear-gradient(135deg, rgb(var(--accent-rgb) / 0.32), rgb(var(--accent-deep-rgb) / 0.18));
+  border-bottom-right-radius: 5px;
+  background: rgb(var(--accent-rgb) / 0.25);
 }
 
-.lm.loc {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  font-weight: 600;
+.m em {
+  display: block;
+  margin-top: 2px;
+  color: var(--muted);
+  font-size: 0.7rem;
+  font-style: normal;
+  text-align: right;
 }
 
-.lm-sticker {
-  align-self: flex-end;
-}
-
-.lp-composer {
+.m.loc {
   display: flex;
   align-items: center;
-  gap: 8px;
-  margin: 0 10px 14px;
-  padding: 6px 6px 6px 14px;
-  border: 1px solid var(--glass-border);
+  gap: 0.5rem;
+}
+
+.m.loc svg {
+  color: var(--mint);
+}
+
+.lp-sticker {
+  align-self: flex-end;
+  opacity: 0;
+  animation: lp-in 0.5s 2.9s forwards, lp-wob 3s 3.6s ease-in-out infinite;
+}
+
+.m:nth-child(1) {
+  animation-delay: 0.5s;
+}
+
+.m:nth-child(2) {
+  animation-delay: 1.3s;
+}
+
+.m:nth-child(3) {
+  animation-delay: 2.1s;
+}
+
+.m:nth-child(5) {
+  animation-delay: 3.7s;
+}
+
+.lp-compose {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin: 0.4rem 0.8rem 0.9rem;
+  padding: 0.45rem 0.5rem 0.45rem 1rem;
+  border: 1px solid var(--line);
   border-radius: 999px;
   color: var(--muted);
-  font-size: 13px;
+  font-size: 0.88rem;
 }
 
-.lp-composer span {
-  flex: 1;
-}
-
-.lp-composer i {
+.lp-compose i {
   width: 30px;
   height: 30px;
   border-radius: 50%;
-  background: linear-gradient(135deg, rgb(var(--accent-light-rgb)), rgb(var(--accent-deep-rgb)));
+  background: linear-gradient(135deg, var(--mint), var(--mint2));
 }
 
-.lp-float {
+.lp-chip {
   position: absolute;
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 8px 12px;
-  border: 1px solid var(--glass-border);
-  border-radius: 14px;
-  background: rgb(var(--panel-rgb, 20 30 28) / 0.9);
-  backdrop-filter: blur(12px);
-  box-shadow: 0 14px 30px rgb(0 0 0 / 0.4);
-  font-size: 12.5px;
-  font-weight: 700;
-  white-space: nowrap;
-}
-
-.lp-float svg {
-  color: var(--accent);
-}
-
-/* No celular os selos cobririam a conversa: só aparecem com espaço dos lados. */
-.lp-float {
-  display: none;
-}
-
-.lp-float.f1 {
-  top: 47%;
-  left: -18%;
-}
-
-.lp-float.f2 {
-  right: -10%;
-  bottom: 22%;
-}
-
-/* ---- Seções ---- */
-.lp-section {
-  padding: 28px 0;
-}
-
-.lp-section h2,
-.lp-final h2 {
-  margin: 0 0 18px;
-  font-size: clamp(24px, 6vw, 34px);
-  font-weight: 800;
-  letter-spacing: -0.025em;
-}
-
-.lp-features {
-  display: grid;
-  gap: 10px;
-}
-
-.lp-feature {
   display: flex;
-  gap: 14px;
-  align-items: flex-start;
-  padding: 16px;
-  border: 1px solid var(--glass-border);
-  border-radius: 20px;
-  background: var(--glass);
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0.9rem;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: rgb(var(--panel-rgb) / 0.88);
+  backdrop-filter: blur(10px);
+  box-shadow: 0 14px 30px -14px #000;
+  font-size: 0.85rem;
+  font-weight: 600;
 }
 
-.lp-feature h3 {
-  margin: 1px 0 4px;
-  font-size: 15.5px;
+.lp-chip svg {
+  color: var(--mint);
 }
 
-.lp-feature p {
-  margin: 0;
+.lp-chip.a {
+  top: 46%;
+  left: -1rem;
+}
+
+.lp-chip.b {
+  right: -0.5rem;
+  bottom: 20%;
+}
+
+@keyframes lp-in {
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes lp-wob {
+  50% {
+    transform: rotate(-4deg) translateY(-3px);
+  }
+}
+
+.lp section {
+  padding: clamp(3rem, 7vw, 5.5rem) 0;
+}
+
+.lp h2 {
+  max-width: 18ch;
+  font-size: clamp(1.9rem, 4vw, 2.9rem);
+  font-weight: 700;
+}
+
+.lp-sub {
+  max-width: 44ch;
+  margin-top: 0.9rem !important;
   color: var(--muted);
-  font-size: 14px;
-  line-height: 1.45;
 }
 
-.lp-icon {
+.lp-bento {
   display: grid;
-  flex: none;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 1rem;
+  margin-top: 2.6rem;
+}
+
+.lp-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  min-height: 180px;
+  padding: 1.6rem;
+  border: 1px solid var(--line);
+  border-radius: 24px;
+  background: linear-gradient(180deg, var(--card), rgb(var(--bg-rgb) / 0.6));
+  transition: border-color 0.2s;
+}
+
+.lp-card:hover {
+  border-color: rgb(var(--accent-rgb) / 0.4);
+}
+
+.lp-card .ic {
+  display: grid;
   place-items: center;
-  width: 42px;
-  height: 42px;
+  width: 44px;
+  height: 44px;
+  margin-bottom: auto;
   border-radius: 14px;
   background: rgb(var(--accent-rgb) / 0.14);
-  color: var(--accent);
+  color: var(--mint);
 }
 
-.lp-steps-copy p {
-  margin: -8px 0 18px;
+.lp-card h3 {
+  font-size: 1.3rem;
+  font-weight: 700;
+  letter-spacing: -0.015em;
+}
+
+.lp-card p {
   color: var(--muted);
-  font-size: 15.5px;
+  font-size: 0.98rem;
+}
+
+.lp-card.big {
+  min-height: 240px;
+  background: radial-gradient(30rem 16rem at 100% 0, var(--glow), transparent), var(--card);
+}
+
+.lp-card.big h3 {
+  font-size: 1.7rem;
+}
+
+.s2 {
+  grid-column: span 2;
+}
+
+.s4 {
+  grid-column: span 4;
+}
+
+.s6 {
+  grid-column: span 6;
 }
 
 .lp-steps {
   display: grid;
-  gap: 12px;
+  grid-template-columns: 0.8fr 1.2fr;
+  align-items: start;
+  gap: 3rem;
+}
+
+.lp ol {
+  position: relative;
   margin: 0;
   padding: 0;
   list-style: none;
+  counter-reset: s;
+}
+
+.lp-steps ol::before {
+  content: '';
+  position: absolute;
+  top: 20px;
+  bottom: 20px;
+  left: 19px;
+  width: 2px;
+  background: linear-gradient(var(--mint), transparent);
 }
 
 .lp-steps li {
-  display: flex;
-  gap: 14px;
-  align-items: flex-start;
-  color: var(--muted);
-  font-size: 14px;
-  line-height: 1.45;
-}
-
-.lp-steps li strong {
-  display: block;
-  color: var(--text);
-  font-size: 15.5px;
-}
-
-.lp-steps li > span {
+  position: relative;
   display: grid;
-  flex: none;
+  grid-template-columns: 40px 1fr;
+  gap: 1.2rem;
+  padding-bottom: 2rem;
+  counter-increment: s;
+}
+
+.lp-steps li::before {
+  content: counter(s);
+  z-index: 1;
+  display: grid;
   place-items: center;
-  width: 34px;
-  height: 34px;
+  width: 40px;
+  height: 40px;
+  border: 2px solid var(--mint);
   border-radius: 50%;
-  background: linear-gradient(135deg, rgb(var(--accent-light-rgb)), rgb(var(--accent-deep-rgb)));
-  color: var(--on-accent);
-  font-weight: 800;
+  background: rgb(var(--bg-rgb));
+  color: var(--mint);
+  font: 700 1rem var(--fd);
+}
+
+.lp-steps li b {
+  display: block;
+  font: 700 1.2rem var(--fd);
+  letter-spacing: -0.01em;
+}
+
+.lp-steps li span {
+  color: var(--muted);
 }
 
 .lp-final {
-  display: grid;
-  justify-items: center;
-  gap: 6px;
-  margin-top: 28px;
-  padding: 36px 20px;
-  border: 1px solid rgb(var(--accent-rgb) / 0.25);
-  border-radius: 28px;
-  background:
-    radial-gradient(30rem 14rem at 50% 0%, rgb(var(--accent-rgb) / 0.2), transparent 70%),
-    var(--glass);
+  padding: clamp(2.5rem, 7vw, 4.5rem) 1.5rem;
+  border: 1px solid var(--line);
+  border-radius: 32px;
+  background: radial-gradient(34rem 16rem at 50% 0, var(--glow), transparent), var(--card);
   text-align: center;
 }
 
 .lp-final h2 {
-  margin: 0;
+  margin-inline: auto;
 }
 
-.lp-final p {
-  margin: 0 0 16px;
+.lp-final .lp-sub {
+  margin: 0.9rem auto 1.8rem !important;
+}
+
+.lp-foot {
+  padding: 2rem 0 max(3rem, env(safe-area-inset-bottom));
   color: var(--muted);
-}
-
-.lp-final .lp-btn {
-  width: min(320px, 100%);
-}
-
-.lp-footer {
-  padding: 28px 0 8px;
-  color: var(--muted);
-  font-size: 13px;
+  font-size: 0.9rem;
   text-align: center;
 }
 
 .lp-ios-steps {
   margin: 0;
   padding-left: 20px;
+  list-style: decimal;
   line-height: 2.1;
 }
 
@@ -658,52 +684,55 @@ useHead({ title: 'Zynko — mensagens, ligações e figurinhas' });
   vertical-align: -3px;
 }
 
-/* ---- Telas maiores ---- */
-@media (min-width: 640px) {
-  .lp-float {
-    display: inline-flex;
-  }
-
-  .lp-cta {
-    display: flex;
-    flex-wrap: wrap;
-  }
-
-  .lp-features {
-    grid-template-columns: repeat(2, 1fr);
-  }
-}
-
-@media (min-width: 900px) {
-  .landing {
-    padding-inline: 32px;
-  }
-
+@media (max-width: 860px) {
   .lp-hero {
-    grid-template-columns: 1.15fr 1fr;
-    align-items: center;
-    padding: 64px 0 80px;
-  }
-
-  .lp-features {
-    grid-template-columns: repeat(3, 1fr);
-    gap: 14px;
-  }
-
-  .lp-feature {
-    flex-direction: column;
-    padding: 22px;
-  }
-
-  .lp-steps-wrap {
-    display: grid;
-    grid-template-columns: 1fr 1.2fr;
-    gap: 40px;
-    align-items: center;
+    grid-template-columns: 1fr;
+    gap: 3.5rem;
   }
 
   .lp-steps {
-    gap: 18px;
+    grid-template-columns: 1fr;
+    gap: 2rem;
+  }
+
+  .lp-bento {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .s4,
+  .s6 {
+    grid-column: span 2;
+  }
+
+  .s2 {
+    grid-column: span 1;
+  }
+
+  .lp-chip.a {
+    left: 0;
+  }
+
+  .lp-chip.b {
+    right: 0;
+  }
+}
+
+@media (max-width: 520px) {
+  .s2 {
+    grid-column: span 2;
+  }
+
+  .lp-chip {
+    display: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .m,
+  .lp-sticker {
+    animation: none;
+    opacity: 1;
+    transform: none;
   }
 }
 </style>
