@@ -4,7 +4,8 @@ export default defineNuxtConfig({
   ssr: false,
   devtools: { enabled: false },
   modules: ['@vite-pwa/nuxt'],
-  css: ['~/assets/css/main.css'],
+  // Inter (variável) embutida no app: igual no iPhone e no Android, funciona sem internet.
+  css: ['@fontsource-variable/inter', '~/assets/css/main.css'],
 
   // ios/ e android/ são os projetos nativos (Capacitor) e guardam uma cópia do site já compilado: fora da checagem de tipos.
   typescript: { tsConfig: { exclude: ['../ios', '../android'] } },

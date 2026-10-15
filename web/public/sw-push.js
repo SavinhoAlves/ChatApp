@@ -9,6 +9,10 @@ self.addEventListener('push', (event) => {
     data = { title: 'Zynko', body: event.data ? event.data.text() : '' };
   }
   const title = data.title || 'Zynko';
+  // Número de não lidas no ícone do app (iPhone 16.4+ instalado, Android, computador).
+  if (typeof data.badge === 'number' && self.navigator.setAppBadge) {
+    self.navigator.setAppBadge(data.badge).catch(() => {});
+  }
   event.waitUntil(
     self.registration.showNotification(title, {
       body: data.body || '',

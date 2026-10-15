@@ -71,12 +71,15 @@ export function useVoiceRecorder() {
   async function start() {
     if (recording.value) return true;
     try {
-      stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true } });
+      stream = await navigator.mediaDevices.getUserMedia({
+        audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true, channelCount: 1 },
+      });
     } catch {
       return false;
     }
     const mime = pickMime();
-    recorder = mime ? new MediaRecorder(stream, { mimeType: mime }) : new MediaRecorder(stream);
+    // 64 kbps: voz bem clara (Opus/AAC) sem arquivo pesado.
+    recorder = new MediaRecorder(stream, { ...(mime && { mimeType: mime }), audioBitsPerSecond: 64_000 });
     chunks = [];
     recorder.ondataavailable = (e) => {
       if (e.data.size > 0) chunks.push(e.data);

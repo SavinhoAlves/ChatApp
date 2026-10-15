@@ -70,7 +70,6 @@ const titles: Record<View, string> = {
 
 const items: { view: View; label: string; hint: string; icon: Component; desktopOnly?: boolean }[] = [
   { view: 'account', label: 'Conta', hint: 'Dispositivos conectados, seu número', icon: KeyRound },
-  { view: 'business', label: 'Conta comercial', hint: 'Perfil da empresa: categoria, horário, endereço, site', icon: Store },
   { view: 'privacy', label: 'Privacidade', hint: 'Contatos bloqueados', icon: Lock },
   { view: 'chats', label: 'Conversas', hint: 'Cor do app, papel de parede, Enter para enviar', icon: MessageSquare },
   { view: 'lists', label: 'Listas', hint: 'Organize conversas: Família, Trabalho…', icon: List },
@@ -273,7 +272,7 @@ const isMac = import.meta.client && /Mac|iPhone|iPad/.test(navigator.platform);
           <Avatar :name="me.displayName" :seed="me.id" :size="64" :src="me.avatarUrl" />
           <span class="settings-profile-info">
             <strong>{{ me.displayName }}</strong>
-            <small>{{ me.isBusiness ? 'Conta comercial · ' : '' }}@{{ me.username }}</small>
+            <small>@{{ me.username }}</small>
           </span>
           <ChevronRight :size="18" :stroke-width="2" class="settings-chevron" />
         </button>
@@ -371,7 +370,6 @@ const isMac = import.meta.client && /Mac|iPhone|iPad/.test(navigator.platform);
       </template>
 
       <!-- Conta comercial -->
-      <BusinessSettings v-else-if="view === 'business'" />
 
       <!-- Privacidade -->
       <template v-else-if="view === 'privacy'">

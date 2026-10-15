@@ -3,7 +3,6 @@ import { Capacitor, registerPlugin } from '@capacitor/core';
 import { ArrowLeft, Camera, IdCard, Lock, Phone, RefreshCw, Smartphone, X } from '@lucide/vue';
 import QRCode from 'qrcode';
 import { formatPhone } from '~/utils/phone';
-import { BUSINESS_CATEGORIES } from '~/utils/business';
 
 const auth = useAuth();
 
@@ -93,8 +92,6 @@ const confirmCode = () =>
   });
 
 // Conta comercial (empresa): só a categoria aqui; o resto em Configurações › Conta comercial.
-const isBusiness = ref(false);
-const businessCategory = ref('');
 
 // Foto de perfil opcional: escolhida antes, enviada logo depois que a conta é criada.
 const photo = ref<File | null>(null);
@@ -130,7 +127,6 @@ const saveProfile = () =>
     await auth.completeProfile({
       signupToken: signupToken.value,
       displayName: displayName.value,
-      businessCategory: isBusiness.value ? businessCategory.value : undefined,
     });
     // A conta já existe: se a foto falhar, entra mesmo assim (dá para trocar depois).
     if (photo.value) await auth.uploadAvatar(photo.value).catch(() => {});
@@ -324,20 +320,9 @@ useHead({ title: 'Entrar · Zynko' });
             <IdCard :size="16" :stroke-width="2" />
             <input v-model="displayName" class="input" type="text" autocomplete="name" maxlength="40" required autofocus />
           </div>
-          <small>{{ isBusiness ? 'Nome da empresa, como os clientes vão ver.' : 'É o nome que seus contatos vão ver. Dá para mudar depois.' }}</small>
+          <small>É o nome que seus contatos vão ver. Dá para mudar depois.</small>
         </label>
-        <label class="radio-row business-toggle">
-          <input v-model="isBusiness" type="checkbox" />
-          <span>Esta é uma conta comercial (empresa)</span>
-        </label>
-        <label v-if="isBusiness" class="field">
-          <span>Categoria da empresa</span>
-          <select v-model="businessCategory" class="input" required>
-            <option value="" disabled>Escolha…</option>
-            <option v-for="c in BUSINESS_CATEGORIES" :key="c" :value="c">{{ c }}</option>
-          </select>
-        </label>
-        <button class="btn btn-primary btn-block" type="submit" :disabled="loading || !displayName.trim() || (isBusiness && !businessCategory)">
+        <button class="btn btn-primary btn-block" type="submit" :disabled="loading || !displayName.trim()">
           {{ loading ? 'Criando…' : 'Concluir' }}
         </button>
       </form>

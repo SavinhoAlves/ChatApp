@@ -103,8 +103,17 @@ onBeforeUnmount(() => navigator.serviceWorker?.removeEventListener('message', on
 
 onMounted(start);
 
-// Celular (fora de uma conversa): barra de abas embaixo, como num app.
+// Celular (fora de uma conversa): barra de abas embaixo, como num app. Layout varia por plataforma.
+const platform = uiPlatform();
 const unreadTotal = computed(() => conversations.value.reduce((n, c) => n + (c.unreadCount > 0 ? 1 : 0), 0));
+
+// Número no ícone do app (fora dele) acompanha as mensagens não lidas enquanto o app está aberto.
+const unreadMessages = computed(() => conversations.value.reduce((n, c) => n + (c.mutedUntil ? 0 : c.unreadCount), 0));
+watch(unreadMessages, (n) => {
+  const nav = navigator as Navigator & { setAppBadge?: (n?: number) => Promise<void>; clearAppBadge?: () => Promise<void> };
+  if (n > 0) void nav.setAppBadge?.(n).catch(() => {});
+  else void nav.clearAppBadge?.().catch(() => {});
+});
 function goTab(t: Tab) {
   tab.value = t;
   showNew.value = false;
@@ -193,9 +202,13 @@ useHead(() => ({ title: activeConversation.value ? `${conversationTitle(activeCo
         </span>
         Conversas
       </button>
-      <button type="button" :class="{ active: tab === 'settings' }" @click="goTab('settings')">
-        <span class="tabbar-icon"><Settings :size="22" :stroke-width="1.9" /></span>
-        Configurações
+      <!-- iPhone: aba "Você" com a foto de perfil (WhatsApp atual). Android: some (Configurações fica no ⋮). -->
+      <button type="button" class="tab-settings" :class="{ active: tab === 'settings' }" @click="goTab('settings')">
+        <span class="tabbar-icon">
+          <Avatar v-if="platform === 'ios'" class="tab-avatar" :name="me.displayName" :seed="me.id" :size="24" :src="me.avatarUrl" />
+          <Settings v-else :size="22" :stroke-width="1.9" />
+        </span>
+        {{ platform === 'ios' ? 'Você' : 'Configurações' }}
       </button>
     </nav>
     <CameraDialog v-if="showCamera" @close="showCamera = false" @captured="onCaptured" />

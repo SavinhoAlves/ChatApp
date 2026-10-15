@@ -122,10 +122,15 @@ export function useCall() {
     localStream =
       hasMic || wantVideo
         ? await navigator.mediaDevices.getUserMedia({
-            audio: hasMic ? { echoCancellation: true, noiseSuppression: true } : false,
-            video: wantVideo ? { width: { ideal: 1280 }, height: { ideal: 720 }, facingMode: 'user' } : false,
+            audio: hasMic ? { echoCancellation: true, noiseSuppression: true, autoGainControl: true, channelCount: 1 } : false,
+            video: wantVideo
+              ? { width: { ideal: 1280 }, height: { ideal: 720 }, frameRate: { ideal: 30, max: 30 }, facingMode: 'user' }
+              : false,
           })
         : new MediaStream();
+    // Dica para o codificador: voz (prioriza clareza) e vídeo com movimento (prioriza fluidez).
+    localStream.getAudioTracks().forEach((t) => (t.contentHint = 'speech'));
+    localStream.getVideoTracks().forEach((t) => (t.contentHint = 'motion'));
     local.value = localStream;
     muted.value = !hasMic;
     cameraOff.value = false;
@@ -178,11 +183,44 @@ export function useCall() {
     streams.value = restStreams;
   }
 
+  // ---- Qualidade: Opus a 64 kbps com correção de perdas (FEC) e vídeo até 2,5 Mbps a 30 fps ----
+  function tuneOpus(sdp: string | undefined) {
+    if (!sdp) return sdp;
+    const opus = /a=rtpmap:(\d+) opus\/48000/i.exec(sdp)?.[1];
+    if (!opus) return sdp;
+    const extra = 'useinbandfec=1;usedtx=0;maxaveragebitrate=64000;stereo=0';
+    return sdp.replace(new RegExp(`a=fmtp:${opus} ([^\\r\\n]*)`), (_m, params: string) => {
+      const kept = params.split(';').filter((p) => !/^(useinbandfec|usedtx|maxaveragebitrate|stereo)=/.test(p.trim()));
+      return `a=fmtp:${opus} ${[...kept, extra].join(';')}`;
+    });
+  }
+
+  async function tuneSenders(pc: RTCPeerConnection) {
+    for (const sender of pc.getSenders()) {
+      const kind = sender.track?.kind;
+      if (!kind) continue;
+      const params = sender.getParameters();
+      if (!params.encodings?.length) params.encodings = [{}];
+      for (const enc of params.encodings) {
+        if (kind === 'video') {
+          enc.maxBitrate = 2_500_000;
+          enc.maxFramerate = 30;
+        } else {
+          enc.maxBitrate = 64_000;
+        }
+      }
+      if (kind === 'video') (params as RTCRtpSendParameters & { degradationPreference?: string }).degradationPreference = 'maintain-framerate';
+      await sender.setParameters(params).catch(() => {});
+    }
+  }
+
   async function offerTo(userId: string) {
     if (!call.value) return;
     const pc = await createPeer(userId);
-    const offer = await pc.createOffer();
+    const created = await pc.createOffer();
+    const offer = { type: created.type, sdp: tuneOpus(created.sdp) };
     await pc.setLocalDescription(offer);
+    void tuneSenders(pc);
     await emit('call:signal', { callId: call.value.id, to: userId, data: { type: 'offer', sdp: offer.sdp } });
   }
 
@@ -198,8 +236,10 @@ export function useCall() {
       pc = await createPeer(from);
       await pc.setRemoteDescription({ type: 'offer', sdp: data.sdp });
       await flushCandidates(from, pc);
-      const answer = await pc.createAnswer();
+      const created = await pc.createAnswer();
+      const answer = { type: created.type, sdp: tuneOpus(created.sdp) };
       await pc.setLocalDescription(answer);
+      void tuneSenders(pc);
       await emit('call:signal', { callId, to: from, data: { type: 'answer', sdp: answer.sdp } });
     } else if (data.type === 'answer' && pc) {
       await pc.setRemoteDescription({ type: 'answer', sdp: data.sdp });

@@ -41,6 +41,13 @@ export default defineNuxtPlugin(() => {
     if (perm.receive === 'granted') await PushNotifications.register();
   }
 
+  // Abriu o app: as notificações já mostradas saem da barra (e o número do ícone do Android some com elas).
+  const clearDelivered = () => {
+    if (document.visibilityState === 'visible') void PushNotifications.removeAllDeliveredNotifications().catch(() => {});
+  };
+  document.addEventListener('visibilitychange', clearDelivered);
+  clearDelivered();
+
   watch(
     auth.token,
     (token) => {

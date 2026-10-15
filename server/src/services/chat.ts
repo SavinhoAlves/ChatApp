@@ -6,7 +6,7 @@ import { prisma } from '../db.js';
 import { HttpError } from '../errors.js';
 import { emitToUsers, getPresence } from '../io.js';
 import { isBlocked, listBlockedIds } from './blocks.js';
-import { contactNameMap, isContact } from './contacts.js';
+import { contactNameMap, isContact, nameFor } from './contacts.js';
 import { pushNewMessage } from './push.js';
 import { isStickerId, stickerUrl, USER_STICKER_PREFIX, userStickerUrl } from './stickers.js';
 
@@ -665,8 +665,8 @@ function serializeConversation(
       user: {
         id: p.user.id,
         username: p.user.username,
-        // Nome salvo nos meus contatos tem prioridade sobre o nome do perfil.
-        displayName: contacts.get(p.userId) ?? p.user.displayName,
+        // Nome salvo nos meus contatos; não salvo aparece pelo número (como no WhatsApp).
+        displayName: nameFor(contacts, viewerId, p.user),
         profileName: p.user.displayName,
         avatarUrl: p.user.avatarUrl,
         isBusiness: p.user.isBusiness,

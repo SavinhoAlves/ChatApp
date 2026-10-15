@@ -25,8 +25,9 @@ async function openCamera() {
   error.value = '';
   try {
     stream = await navigator.mediaDevices.getUserMedia({
-      video: { facingMode: facing.value },
-      audio: mode.value === 'video',
+      // Full HD a 30 fps (o aparelho usa o máximo que tiver até isso).
+      video: { facingMode: facing.value, width: { ideal: 1920 }, height: { ideal: 1080 }, frameRate: { ideal: 30 } },
+      audio: mode.value === 'video' ? { echoCancellation: true, noiseSuppression: true, autoGainControl: true } : false,
     });
   } catch {
     error.value = 'Não foi possível acessar a câmera.';
@@ -55,13 +56,14 @@ function capturePhoto() {
   canvas.getContext('2d')?.drawImage(video, 0, 0);
   canvas.toBlob((blob) => {
     if (blob) emit('captured', blob, 'IMAGE');
-  }, 'image/jpeg', 0.92);
+  }, 'image/jpeg', 0.95);
 }
 
 function startRecording() {
   if (!stream) return;
   recordedChunks = [];
-  mediaRecorder = new MediaRecorder(stream);
+  // Vídeo gravado pelo app: 4 Mbps de vídeo e 128 kbps de áudio.
+  mediaRecorder = new MediaRecorder(stream, { videoBitsPerSecond: 4_000_000, audioBitsPerSecond: 128_000 });
   mediaRecorder.ondataavailable = (e) => {
     if (e.data.size > 0) recordedChunks.push(e.data);
   };

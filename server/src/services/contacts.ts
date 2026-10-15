@@ -6,6 +6,26 @@ import { INVALID_PHONE_MESSAGE, normalizePhone } from './phone.js';
 type ContactNames = { firstName: string | null; lastName: string | null };
 
 /** Nome salvo na agenda ("Ana Souza"), ou null se a pessoa foi adicionada sem nome. */
+/** Número para exibir: +55 11 99999-0000 (Brasil) ou o E.164 como veio. */
+export function displayPhone(phone: string) {
+  const br = /^\+55(\d{2})(\d{4,5})(\d{4})$/.exec(phone);
+  return br ? `+55 ${br[1]} ${br[2]}-${br[3]}` : phone;
+}
+
+/**
+ * Como o WhatsApp: quem não está nos meus contatos aparece pelo número (o nome do perfil fica só no
+ * "~nome" dos dados do contato). Salvo sem nome: nome do perfil. Sem número (contas antigas): nome do perfil.
+ */
+export function nameFor(
+  saved: Map<string, string | null>,
+  viewerId: string,
+  user: { id: string; displayName: string; phone?: string | null },
+) {
+  if (user.id === viewerId) return user.displayName;
+  if (saved.has(user.id)) return saved.get(user.id) || user.displayName;
+  return user.phone ? displayPhone(user.phone) : user.displayName;
+}
+
 export function savedName(c: ContactNames) {
   const name = [c.firstName, c.lastName].filter(Boolean).join(' ').trim();
   return name || null;

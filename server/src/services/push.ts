@@ -4,7 +4,7 @@ import { readFileSync } from 'node:fs';
 import { connect, type ClientHttp2Session } from 'node:http2';
 import { config } from '../config.js';
 import { prisma } from '../db.js';
-import { savedName } from './contacts.js';
+import { displayPhone, savedName } from './contacts.js';
 
 /**
  * Notificações nativas, sem bibliotecas:
@@ -76,12 +76,18 @@ function apns() {
   return session;
 }
 
-type Payload = { title: string; body: string; threadId?: string; data?: Record<string, string> };
+// badge: total de mensagens não lidas (número no ícone do app).
+type Payload = { title: string; body: string; threadId?: string; data?: Record<string, string>; badge?: number };
 
 function sendApnsRaw(token: string, p: Payload): Promise<{ status: number; reason?: string }> {
   return new Promise((resolve) => {
     const body = JSON.stringify({
-      aps: { alert: { title: p.title, body: p.body }, sound: 'default', ...(p.threadId && { 'thread-id': p.threadId }) },
+      aps: {
+        alert: { title: p.title, body: p.body },
+        sound: 'default',
+        ...(p.threadId && { 'thread-id': p.threadId }),
+        ...(p.badge !== undefined && { badge: p.badge }),
+      },
       ...p.data,
     });
     let req;
@@ -173,7 +179,11 @@ async function sendFcm(token: string, p: Payload): Promise<SendResult> {
           priority: 'HIGH',
           ttl: '86400s',
           // tag: avisos da mesma conversa se substituem em vez de empilhar.
-          notification: { sound: 'default', ...(p.threadId && { tag: p.threadId }) },
+          notification: {
+            sound: 'default',
+            ...(p.threadId && { tag: p.threadId }),
+            ...(p.badge !== undefined && { notification_count: p.badge }),
+          },
         },
       },
     }),
@@ -189,7 +199,7 @@ async function sendFcm(token: string, p: Payload): Promise<SendResult> {
 async function sendWeb(token: string, p: Payload): Promise<SendResult> {
   try {
     const subscription = JSON.parse(token) as webpush.PushSubscription;
-    await webpush.sendNotification(subscription, JSON.stringify({ title: p.title, body: p.body, tag: p.threadId, data: p.data ?? {} }), {
+    await webpush.sendNotification(subscription, JSON.stringify({ title: p.title, body: p.body, tag: p.threadId, badge: p.badge, data: p.data ?? {} }), {
       TTL: 86400,
       urgency: 'high',
       ...(p.threadId && { topic: p.threadId.slice(0, 32) }),
@@ -243,12 +253,17 @@ const clip = (text: string, max = 180) => (text.length > max ? `${text.slice(0, 
 
 /** Nome de quem enviou como cada destinatário salvou na agenda (ou o nome do perfil). */
 async function namesFor(recipients: string[], senderId: string, fallback: string) {
-  const saved = await prisma.contact.findMany({
-    where: { ownerId: { in: recipients }, contactId: senderId },
-    select: { ownerId: true, firstName: true, lastName: true },
-  });
-  const byOwner = new Map(saved.map((c) => [c.ownerId, savedName(c)]));
-  return new Map(recipients.map((id) => [id, byOwner.get(id) || fallback]));
+  const [saved, sender] = await Promise.all([
+    prisma.contact.findMany({
+      where: { ownerId: { in: recipients }, contactId: senderId },
+      select: { ownerId: true, firstName: true, lastName: true },
+    }),
+    prisma.user.findUnique({ where: { id: senderId }, select: { phone: true } }),
+  ]);
+  const byOwner = new Map(saved.map((c) => [c.ownerId, savedName(c) || fallback]));
+  // Quem não salvou o remetente vê o número (como no WhatsApp).
+  const unsaved = sender?.phone ? displayPhone(sender.phone) : fallback;
+  return new Map(recipients.map((id) => [id, byOwner.get(id) ?? unsaved]));
 }
 
 /** Mensagem nova: avisa os outros participantes que não silenciaram a conversa. */
@@ -277,9 +292,18 @@ export async function pushNewMessage(messageId: string) {
   const names = await namesFor(recipients, m.senderId, m.sender.displayName);
   const group = m.conversation.type === 'GROUP';
 
+  // Não lidas de cada destinatário (já contando esta), para o número no ícone do app.
+  const unread = await prisma.messageReceipt.groupBy({
+    by: ['userId'],
+    where: { userId: { in: recipients }, readAt: null, message: { deletedAt: null } },
+    _count: { _all: true },
+  });
+  const unreadBy = new Map(unread.map((u) => [u.userId, u._count._all]));
+
   await sendToUsers(recipients, (userId) => {
     const sender = names.get(userId)!;
     return {
+      badge: unreadBy.get(userId) ?? 1,
       title: group ? (m.conversation.title ?? 'Grupo') : sender,
       body: group ? `${sender}: ${text}` : text,
       threadId: m.conversationId,

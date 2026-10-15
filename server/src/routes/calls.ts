@@ -4,7 +4,7 @@ import { z } from 'zod';
 import { createCallLink } from '../calls.js';
 import { config } from '../config.js';
 import { prisma } from '../db.js';
-import { contactNameMap } from '../services/contacts.js';
+import { contactNameMap, nameFor } from '../services/contacts.js';
 import { validate } from '../errors.js';
 
 // Validade da senha temporária do TURN. O app pede outra antes de vencer (ver useCall.ts).
@@ -45,12 +45,16 @@ export async function callRoutes(app: FastifyInstance) {
       orderBy: { createdAt: 'desc' },
       take: 60,
       include: {
-        caller: { select: { id: true, displayName: true, avatarUrl: true } },
-        entries: { include: { user: { select: { id: true, displayName: true, avatarUrl: true } } } },
+        caller: { select: { id: true, displayName: true, avatarUrl: true, phone: true } },
+        entries: { include: { user: { select: { id: true, displayName: true, avatarUrl: true, phone: true } } } },
       },
     });
     const names = await contactNameMap(me);
-    const person = (u: { id: string; displayName: string; avatarUrl: string | null }) => ({ ...u, displayName: names.get(u.id) || u.displayName });
+    const person = (u: { id: string; displayName: string; avatarUrl: string | null; phone: string | null }) => ({
+      id: u.id,
+      avatarUrl: u.avatarUrl,
+      displayName: nameFor(names, me, u),
+    });
     return {
       calls: logs.map((l) => {
         const outgoing = l.callerId === me;
