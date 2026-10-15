@@ -210,7 +210,7 @@ async function sendWeb(token: string, p: Payload): Promise<SendResult> {
   } catch (error) {
     const status = (error as { statusCode?: number }).statusCode ?? 0;
     // 404/410: a inscrição não existe mais (app removido, permissão retirada).
-    return { ok: false, dead: status === 404 || status === 410, error: `WebPush ${status} ${(error as Error).message}` };
+    return { ok: false, dead: status === 404 || status === 410, error: `WebPush ${status} ${(error as Error).message} ${String((error as { body?: unknown }).body ?? '').slice(0, 200)}` };
   }
 }
 
