@@ -171,11 +171,21 @@ export function useAuth() {
   async function restore(): Promise<boolean> {
     if (!token.value) return false;
     if (me.value) return true;
-    try {
-      const res = await api<{ user: User; token?: string }>('/me');
+    // Abre na hora com o perfil guardado da última vez; confirma com o servidor em segundo plano.
+    const cached = readCache<User>('zynko.me');
+    const refresh = api<{ user: User; token?: string }>('/me').then((res) => {
       me.value = res.user;
+      writeCache('zynko.me', res.user);
       // O servidor troca tokens antigos (com validade) por um que vale até desconectar.
       if (res.token) setToken(res.token);
+    });
+    if (cached) {
+      me.value = cached;
+      refresh.catch(() => {}); // 401 já derruba a sessão dentro de api()
+      return true;
+    }
+    try {
+      await refresh;
       return true;
     } catch {
       // 401 já derrubou a sessão dentro de api(); sem conexão mantém o token para tentar de novo.
@@ -190,6 +200,7 @@ export function useAuth() {
     useCall().cleanup();
     setToken(null);
     me.value = null;
+    clearCaches();
     // Encerra a sessão no servidor (some da lista de dispositivos). Se falhar, o token expira sozinho.
     if (old) void $fetch('/api/auth/logout', { method: 'POST', headers: { Authorization: `Bearer ${old}` } }).catch(() => {});
     await navigateTo('/login');

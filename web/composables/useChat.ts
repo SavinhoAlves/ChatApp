@@ -139,8 +139,25 @@ export function useChat() {
   }
 
   async function loadConversations() {
+    // Lista da última vez na tela imediatamente; a do servidor substitui quando chegar.
+    if (!conversations.value.length) {
+      const cached = readCache<Conversation[]>('zynko.conversations');
+      if (cached?.length) conversations.value = cached;
+    }
     const res = await api<{ conversations: Conversation[] }>('/conversations');
     conversations.value = res.conversations;
+  }
+  if (import.meta.client && !(globalThis as { __zynkoConvCache?: boolean }).__zynkoConvCache) {
+    (globalThis as { __zynkoConvCache?: boolean }).__zynkoConvCache = true;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    watch(
+      conversations,
+      (list) => {
+        clearTimeout(timer);
+        timer = setTimeout(() => writeCache('zynko.conversations', list.slice(0, 60)), 1500);
+      },
+      { deep: true },
+    );
   }
 
   async function fetchConversation(id: string) {

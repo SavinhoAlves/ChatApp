@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { AtSign, Ban, Check, Clock, Globe, Images, Mail, MapPin, Pencil, Phone, Store, UserPlus, X } from '@lucide/vue';
+import { AtSign, Ban, Check, Clock, Globe, Images, Mail, MapPin, Pencil, Phone, Store, Trash2, UserPlus, X } from '@lucide/vue';
 import { type BusinessProfile, websiteHref } from '~/utils/business';
 import { formatPhone } from '~/utils/phone';
 
@@ -73,6 +73,25 @@ async function saveContact() {
     error.value = (e as Error).message;
   } finally {
     saving.value = false;
+  }
+}
+
+async function deleteContact() {
+  const u = user.value;
+  if (!u) return;
+  const ok = await confirm({
+    title: `Apagar ${u.displayName}?`,
+    message: 'A pessoa sai dos seus contatos. A conversa continua, mostrando o número no lugar do nome.',
+    confirmLabel: 'Apagar',
+    danger: true,
+  });
+  if (!ok) return;
+  error.value = '';
+  try {
+    await api(`/contacts/${u.id}`, { method: 'DELETE' });
+    await chat.loadConversations();
+  } catch (e) {
+    error.value = (e as Error).message;
   }
 }
 
@@ -170,6 +189,10 @@ watch(conv, (c) => {
           <button class="settings-item" type="button" @click="startEdit">
             <component :is="conv.peerIsContact ? Pencil : UserPlus" :size="20" :stroke-width="1.8" class="settings-icon" />
             <span class="settings-text"><strong>{{ conv.peerIsContact ? 'Editar contato' : 'Adicionar aos contatos' }}</strong></span>
+          </button>
+          <button v-if="conv.peerIsContact" class="settings-item danger" type="button" @click="deleteContact">
+            <Trash2 :size="20" :stroke-width="1.8" class="settings-icon" />
+            <span class="settings-text"><strong>Apagar contato</strong></span>
           </button>
           <button class="settings-item danger" type="button" @click="toggleBlock">
             <Ban :size="20" :stroke-width="1.8" class="settings-icon" />

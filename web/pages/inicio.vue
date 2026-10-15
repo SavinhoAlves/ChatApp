@@ -210,7 +210,7 @@ useHead({
   position: sticky;
   top: 0;
   z-index: 20;
-  padding-top: env(safe-area-inset-top);
+  padding-top: var(--sat);
   border-bottom: 1px solid var(--line);
   background: rgb(var(--bg-rgb) / 0.72);
   backdrop-filter: blur(14px);

@@ -43,7 +43,7 @@ useHead({ title: 'Bem-vindo ao Zynko' });
   display: flex;
   flex-direction: column;
   height: 100dvh;
-  padding: env(safe-area-inset-top) 24px max(24px, env(safe-area-inset-bottom));
+  padding: var(--sat) 24px max(24px, env(safe-area-inset-bottom));
   overflow: hidden;
   background:
     radial-gradient(30rem 30rem at 50% 38%, rgb(var(--accent-rgb) / 0.16), transparent 70%),

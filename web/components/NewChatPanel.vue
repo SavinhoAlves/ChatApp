@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ArrowLeft, ArrowRight, Check, Phone, Search, Send, UserPlus, Users, UsersRound, X } from '@lucide/vue';
+import { ArrowLeft, ArrowRight, Check, EllipsisVertical, MessageCircle, Pencil, Phone, Search, Send, Trash2, UserPlus, Users, UsersRound, X } from '@lucide/vue';
 import { formatPhone } from '~/utils/phone';
 import { type PendingContact, shareInvite } from '~/utils/invite';
 import type { User } from '~/types';
@@ -115,6 +115,39 @@ async function invite(name?: string) {
   const r = await shareInvite(name);
   inviteNote.value = r === 'copied' ? 'Convite copiado. Cole no WhatsApp, SMS ou e-mail para enviar.' : r === 'shared' ? 'Convite enviado.' : r === 'failed' ? 'Não foi possível copiar o convite.' : '';
   if (inviteNote.value) setTimeout(() => (inviteNote.value = ''), 4000);
+}
+
+// Editar o nome salvo / apagar o contato (como na agenda do WhatsApp).
+const contactMenu = ref<User | null>(null);
+async function editContact(u: User) {
+  contactMenu.value = null;
+  const name = await useConfirm().prompt({ title: 'Editar contato', placeholder: 'Nome do contato', value: u.displayName, confirmLabel: 'Salvar', maxLength: 80 });
+  if (!name?.trim()) return;
+  const [firstName, ...rest] = name.trim().split(/s+/);
+  try {
+    await api('/contacts', { method: 'POST', body: { username: u.username, firstName, lastName: rest.join(' ') || undefined } });
+    await loadContacts();
+    void chat.loadConversations().catch(() => {});
+  } catch (e) {
+    await alert({ title: 'Não foi possível salvar', message: (e as Error).message });
+  }
+}
+async function deleteContact(u: User) {
+  contactMenu.value = null;
+  const ok = await useConfirm().confirm({
+    title: `Apagar ${u.displayName}?`,
+    message: 'A pessoa sai dos seus contatos. As conversas continuam, mostrando o número no lugar do nome.',
+    confirmLabel: 'Apagar',
+    danger: true,
+  });
+  if (!ok) return;
+  try {
+    await api(`/contacts/${u.id}`, { method: 'DELETE' });
+    contacts.value = contacts.value.filter((x) => x.id !== u.id);
+    void chat.loadConversations().catch(() => {});
+  } catch (e) {
+    await alert({ title: 'Não foi possível apagar', message: (e as Error).message });
+  }
 }
 
 async function removePending(p: PendingContact) {
@@ -300,9 +333,8 @@ const titles = { list: 'Nova conversa', group: 'Adicionar participantes', 'group
 
         <section v-for="section in sections" :key="section.letter" class="letter-section">
           <p class="letter">{{ section.letter }}</p>
+          <div v-for="user in section.users" :key="user.id" class="user-item-wrap">
           <button
-            v-for="user in section.users"
-            :key="user.id"
             class="user-item"
             type="button"
             :disabled="submitting"
@@ -317,7 +349,23 @@ const titles = { list: 'Nova conversa', group: 'Adicionar participantes', 'group
               <Check v-if="isSelected(user)" :size="13" :stroke-width="2.6" />
             </span>
           </button>
+          <button v-if="view === 'list'" class="icon-btn contact-more" type="button" :aria-label="`Opções de ${user.displayName}`" @click="contactMenu = user">
+            <EllipsisVertical :size="18" :stroke-width="2" />
+          </button>
+          </div>
         </section>
+
+        <div v-if="contactMenu" class="more-backdrop" @click.self="contactMenu = null">
+          <div class="more-menu contact-menu" role="menu" :aria-label="contactMenu.displayName">
+            <div class="more-group">
+              <button type="button" @click="openChat(contactMenu.id)"><MessageCircle :size="19" :stroke-width="2" /> Conversar</button>
+              <button type="button" @click="editContact(contactMenu)"><Pencil :size="19" :stroke-width="2" /> Editar contato</button>
+            </div>
+            <div class="more-group danger">
+              <button type="button" @click="deleteContact(contactMenu)"><Trash2 :size="19" :stroke-width="2" /> Apagar contato</button>
+            </div>
+          </div>
+        </div>
 
         <section v-if="view === 'list' && filteredPending.length" class="letter-section">
           <p class="section-label">Convidar para o Zynko</p>
