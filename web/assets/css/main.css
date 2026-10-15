@@ -5570,3 +5570,104 @@ html[data-accent='roxo'] body {
   height: 56px;
   font-size: 22px;
 }
+
+/* =====================================================================
+   Plataforma (como o WhatsApp): iPhone e Android com layouts próprios,
+   no visual dos prints de referência (vidro, cantos bem redondos, roxo).
+   ===================================================================== */
+@media (max-width: 760px) {
+  /* Botões do topo em "ladrilhos" de vidro (voltar, câmera, ⋮, ajustes) */
+  .side-header .icon-btn,
+  .chat-header .back-btn,
+  .settings-head .icon-btn {
+    width: 44px;
+    height: 44px;
+    border: 1px solid var(--glass-border);
+    border-radius: 16px;
+    background: var(--glass);
+    backdrop-filter: blur(12px);
+  }
+
+  /* Cartões com cantos bem arredondados */
+  .bubble {
+    border-radius: 22px;
+    border-top-left-radius: 8px;
+  }
+
+  .mine .bubble {
+    border-radius: 22px;
+    border-top-right-radius: 8px;
+  }
+
+  .composer-row {
+    border-radius: 26px;
+  }
+
+  /* ---------- iPhone ---------- */
+  /* Barra de baixo flutuante em pílula; a aba ativa vira um botão preenchido (ícone + nome). */
+  html[data-platform='ios'] .tabbar {
+    inset: auto 12px max(12px, env(safe-area-inset-bottom));
+    padding: 6px;
+    border: 1px solid var(--glass-border);
+    border-radius: 30px;
+    background: rgb(var(--panel-rgb) / 0.78);
+    backdrop-filter: blur(24px) saturate(1.5);
+    box-shadow: 0 18px 40px rgb(0 0 0 / 0.45);
+  }
+
+  html[data-platform='ios'] .tabbar button {
+    gap: 2px;
+    padding: 6px 0;
+    border-radius: 24px;
+    transition: background-color 0.2s var(--ease), color 0.2s var(--ease);
+  }
+
+  html[data-platform='ios'] .tabbar-icon {
+    width: auto;
+    height: 26px;
+    background: transparent !important;
+  }
+
+  html[data-platform='ios'] .tabbar button.active {
+    background: linear-gradient(135deg, rgb(var(--accent-light-rgb)), rgb(var(--accent-deep-rgb)));
+    box-shadow: 0 6px 18px rgb(var(--accent-rgb) / 0.45);
+    color: #fff;
+  }
+
+  html[data-platform='ios'] .tabbar button.active .tabbar-icon {
+    color: #fff;
+  }
+
+  html[data-platform='ios'] .app:not(.chat-open) .sidebar {
+    padding-bottom: calc(92px + env(safe-area-inset-bottom));
+  }
+
+  /* Nova conversa no "+" do topo (sem botão flutuante), como no WhatsApp do iPhone */
+  html[data-platform='ios'] .fab {
+    display: none;
+  }
+
+  html[data-platform='ios'] .side-header .icon-btn.hide-mobile {
+    display: inline-grid !important;
+  }
+
+  /* ---------- Android ---------- */
+  /* Barra presa embaixo (Material 3) e abas começando por Conversas, como no WhatsApp do Android. */
+  html[data-platform='android'] .tabbar button:nth-child(4) {
+    order: -1;
+  }
+
+  html[data-platform='android'] .tabbar {
+    border-top: 0;
+    background: rgb(var(--panel-rgb) / 0.96);
+  }
+
+  html[data-platform='android'] .tabbar button.active .tabbar-icon {
+    background: linear-gradient(135deg, rgb(var(--accent-rgb) / 0.35), rgb(var(--accent-deep-rgb) / 0.25));
+  }
+
+  html[data-platform='android'] .fab {
+    border-radius: 18px;
+    bottom: calc(80px + env(safe-area-inset-bottom));
+  }
+}

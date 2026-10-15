@@ -48,7 +48,7 @@ export interface Prefs {
   appColor: AppColor;
 }
 
-const defaults: Prefs = { enterToSend: true, wallpaper: 'doodle', conversationThemes: {}, appColor: 'turquesa' };
+const defaults: Prefs = { enterToSend: true, wallpaper: 'doodle', conversationThemes: {}, appColor: 'roxo' };
 
 function read(): Prefs {
   if (!import.meta.client) return { ...defaults };
