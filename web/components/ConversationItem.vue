@@ -176,6 +176,16 @@ const toggleRead = () =>
 
 // ---- "Mais": janela de baixo com as opções ----
 const moreOpen = ref(false);
+// Menu pequeno preso ao card (abaixo dele, ou acima se não couber), sem escurecer/desfocar o resto.
+const morePos = ref<Record<string, string>>({});
+function openMore() {
+  const r = root.value?.getBoundingClientRect();
+  if (r) {
+    const below = window.innerHeight - r.bottom;
+    morePos.value = below > 360 || below > r.top ? { top: `${r.bottom - 6}px` } : { bottom: `${window.innerHeight - r.top - 6}px` };
+  }
+  moreOpen.value = true;
+}
 const listsOpen = ref(false);
 const { lists, toggleInList, createList } = useLists();
 const peerName = computed(() => (otherUser.value ? chat.conversationTitle(props.conv) : ''));
@@ -234,7 +244,7 @@ async function toggleBlock() {
       </button>
     </div>
     <div v-if="swipeX < 0" class="swipe-actions right">
-      <button type="button" class="sa-more" @click="swipeAction(() => (moreOpen = true))">
+      <button type="button" class="sa-more" @click="swipeAction(openMore)">
         <Ellipsis :size="20" :stroke-width="2" /> Mais
       </button>
       <button type="button" class="sa-archive" @click="swipeAction(toggleArchive)">
@@ -341,9 +351,8 @@ async function toggleBlock() {
 
     <!-- "Mais" (arrastar para a esquerda) -->
     <Teleport to="body">
-      <div v-if="moreOpen" class="overlay" @click.self="moreOpen = false">
-        <div class="dialog more-sheet" role="dialog" aria-modal="true" :aria-label="chat.conversationTitle(conv)">
-          <p class="more-title">{{ chat.conversationTitle(conv) }}</p>
+      <div v-if="moreOpen" class="more-backdrop" @click.self="moreOpen = false">
+        <div class="more-menu" role="menu" :aria-label="chat.conversationTitle(conv)" :style="morePos">
           <div class="more-group">
             <button type="button" @click="more(toggleMute)">
               <Bell v-if="isMuted" :size="19" :stroke-width="2" /><BellOff v-else :size="19" :stroke-width="2" />
@@ -377,7 +386,6 @@ async function toggleBlock() {
             </template>
             <button v-else type="button" @click="more(leaveGroup)"><LogOut :size="19" :stroke-width="2" /> Sair do grupo</button>
           </div>
-          <button type="button" class="btn btn-ghost btn-block" @click="moreOpen = false">Cancelar</button>
         </div>
       </div>
     </Teleport>
