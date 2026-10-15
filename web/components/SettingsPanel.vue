@@ -202,9 +202,35 @@ const permission = ref<NotificationPermission | 'unsupported'>('default');
 function readPermission() {
   permission.value = typeof Notification === 'undefined' ? 'unsupported' : Notification.permission;
 }
+// Web Push (PWA/navegador). Mostra o motivo quando não dá, para facilitar o suporte.
+const webPush = useWebPush();
+const pushNote = ref('');
+const pushDiag = computed(() => {
+  if (!import.meta.client) return '';
+  const ios = /iphone|ipad|ipod/i.test(navigator.userAgent);
+  const parts = [ios ? 'iPhone' : 'Navegador', isInstalledApp() ? 'aberto pela tela inicial' : 'aberto em aba do navegador'];
+  parts.push('serviceWorker' in navigator ? 'service worker ok' : 'sem service worker');
+  parts.push('PushManager' in window ? 'push ok' : 'sem push');
+  return parts.join(' · ');
+});
 async function enableNotifications() {
-  await Notification.requestPermission();
+  pushNote.value = '';
+  try {
+    const result = await webPush.enable();
+    if (result === 'granted') pushNote.value = 'Pronto: este aparelho vai receber notificações.';
+    else if (result === 'unsupported') pushNote.value = 'Este aparelho não aceita notificações aqui.';
+  } catch (e) {
+    pushNote.value = `Não foi possível ativar: ${(e as Error).message}`;
+  }
   readPermission();
+}
+async function resubscribe() {
+  pushNote.value = '';
+  try {
+    pushNote.value = (await webPush.subscribe()) ? 'Aparelho registrado de novo.' : 'O servidor ainda não tem as chaves de notificação (VAPID).';
+  } catch (e) {
+    pushNote.value = `Falhou: ${(e as Error).message}`;
+  }
 }
 
 watch(view, (v) => {
@@ -436,11 +462,17 @@ const isMac = import.meta.client && /Mac|iPhone|iPad/.test(navigator.platform);
             <span v-else-if="permission === 'unsupported'">Não suportadas neste navegador</span>
             <span v-else>Desativadas</span>
             <button v-if="permission === 'default'" class="btn btn-primary btn-sm" type="button" @click="enableNotifications">Ativar</button>
+            <button v-else-if="permission === 'granted'" class="btn btn-ghost btn-sm" type="button" @click="resubscribe">Registrar de novo</button>
           </div>
+          <small v-if="pushNote" class="settings-note">{{ pushNote }}</small>
+          <small v-if="permission === 'unsupported'" class="settings-note">
+            No iPhone: precisa do iOS 16.4 ou mais novo e abrir o Zynko pelo ícone da Tela de Início (Safari › Compartilhar › Adicionar à Tela de Início).
+          </small>
+          <small class="settings-note">{{ pushDiag }}</small>
           <small v-if="permission === 'denied'" class="settings-note">
             Para liberar, clique no cadeado ao lado do endereço do site e permita notificações.
           </small>
-          <small v-else class="settings-note">Avisa novas mensagens quando o Zynko está aberto em segundo plano.</small>
+          <small v-else class="settings-note">Avisa novas mensagens mesmo com o Zynko fechado.</small>
         </section>
       </template>
 
