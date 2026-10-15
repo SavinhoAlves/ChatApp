@@ -77,7 +77,9 @@ function apns() {
 }
 
 // badge: total de mensagens não lidas (número no ícone do app).
-type Payload = { title: string; body: string; threadId?: string; data?: Record<string, string>; badge?: number };
+type Payload = { title: string; body: string; threadId?: string; data?: Record<string, string>; badge?: number;
+  /** Só Android, sem aviso visível: o app nativo decide o que mostrar (tela de ligação). */
+  androidData?: boolean };
 
 function sendApnsRaw(token: string, p: Payload): Promise<{ status: number; reason?: string }> {
   return new Promise((resolve) => {
@@ -173,9 +175,9 @@ async function sendFcm(token: string, p: Payload): Promise<SendResult> {
     body: JSON.stringify({
       message: {
         token,
-        notification: { title: p.title, body: p.body },
+        ...(!p.androidData && { notification: { title: p.title, body: p.body } }),
         data: p.data ?? {},
-        android: {
+        android: p.androidData ? { priority: 'HIGH', ttl: '60s' } : {
           priority: 'HIGH',
           ttl: '86400s',
           // tag: avisos da mesma conversa se substituem em vez de empilhar.
@@ -221,7 +223,7 @@ async function sendToUsers(userIds: string[], build: (userId: string) => Payload
   await Promise.all(
     devices.map(async (d) => {
       const payload = build(d.userId);
-      if (!payload) return;
+      if (!payload || (payload.androidData && d.platform !== 'android')) return;
       let res: SendResult;
       try {
         res =
@@ -313,12 +315,24 @@ export async function pushNewMessage(messageId: string) {
 }
 
 /** Ligação chamando: avisa quem está sendo chamado (tocar no aviso abre o app ainda chamando). */
-export async function pushIncomingCall(callerId: string, callerName: string, userIds: string[], video: boolean) {
+export async function pushIncomingCall(callId: string, callerId: string, callerName: string, userIds: string[], video: boolean) {
   if (!pushEnabled) return;
   const names = await namesFor(userIds, callerId, callerName);
+  // Android: tela de ligação em tela cheia (também com o aparelho bloqueado).
+  await sendToUsers(userIds, (userId) => ({
+    title: '',
+    body: '',
+    androidData: true,
+    data: { type: 'call', callId, callerName: names.get(userId)!, video: video ? '1' : '0' },
+  }));
   await sendToUsers(userIds, (userId) => ({
     title: names.get(userId)!,
     body: video ? '📹 Chamada de vídeo' : '📞 Ligação de voz',
     data: { call: '1' },
   }));
+}
+
+/** Parou de tocar (atendeu, recusou, desistiu ou caiu): fecha a tela de ligação no Android. */
+export async function pushCallEnded(callId: string, userIds: string[]) {
+  await sendToUsers(userIds, () => ({ title: '', body: '', androidData: true, data: { type: 'call-end', callId } }));
 }

@@ -8,7 +8,7 @@ import { userRoom } from './io.js';
 import { isBlocked } from './services/blocks.js';
 import { getMemberIds } from './services/chat.js';
 import { contactNameMap } from './services/contacts.js';
-import { pushIncomingCall } from './services/push.js';
+import { pushCallEnded, pushIncomingCall } from './services/push.js';
 
 /**
  * Ligações de voz e vídeo (WebRTC). O servidor só faz a "sinalização": avisa quem está sendo chamado e
@@ -110,6 +110,7 @@ export function bindCallEvents(io: Server, socket: Socket, log: FastifyBaseLogge
     if (!room.fromLink) logCall(() => prisma.callLog.updateMany({ where: { id: room.id, endedAt: null }, data: { endedAt: new Date() } }));
     for (const socketId of room.participants.values()) toSocket(socketId, 'call:ended', { callId: room.id, reason });
     toUsers([...room.ringing], 'call:ended', { callId: room.id, reason });
+    void pushCallEnded(room.id, [...room.ringing]).catch(() => {});
   }
 
   function leave(room: Room, who: string) {
@@ -162,11 +163,14 @@ export function bindCallEvents(io: Server, socket: Socket, log: FastifyBaseLogge
       );
       toUsers(allowed, 'call:incoming', { ...roomInfo(room), from: room.from, group: allowed.length > 1 });
       // App fechado no iPhone: o aviso nativo é o que faz a pessoa saber que está tocando.
-      void pushIncomingCall(userId, room.from.displayName, allowed, data.video).catch((err) => log.error(err));
+      void pushIncomingCall(room.id, userId, room.from.displayName, allowed, data.video).catch((err) => log.error(err));
       room.ringTimer = setTimeout(() => {
         // Ninguém atendeu: chamada perdida.
         if (rooms.get(room.id) === room && room.participants.size <= 1) endRoom(room, 'missed');
-        else room.ringing.clear();
+        else {
+          void pushCallEnded(room.id, [...room.ringing]).catch(() => {});
+          room.ringing.clear();
+        }
       }, RING_TIMEOUT_MS);
       return roomInfo(room);
     }),
@@ -204,6 +208,7 @@ export function bindCallEvents(io: Server, socket: Socket, log: FastifyBaseLogge
       }
       // Atendeu em um aparelho: para de tocar nos outros aparelhos da mesma pessoa.
       toUsers([userId], 'call:answered-elsewhere', { callId: room.id, socketId: socket.id });
+      if (answering) void pushCallEnded(room.id, [userId]).catch(() => {});
       const [me] = await peopleInfo([userId]);
       for (const id of others) toSocket(room.participants.get(id)!, 'call:peer-joined', { callId: room.id, userId, user: me });
       return { ...roomInfo(room), participants: others, people: await peopleInfo(others) };
@@ -218,6 +223,7 @@ export function bindCallEvents(io: Server, socket: Socket, log: FastifyBaseLogge
       room.ringing.delete(userId);
       for (const socketId of room.participants.values()) toSocket(socketId, 'call:declined', { callId, userId });
       toUsers([userId], 'call:ended', { callId, reason: 'declined' });
+      void pushCallEnded(callId, [userId]).catch(() => {});
       // 1:1 recusada (ou todos recusaram e só sobrou quem ligou): encerra.
       if (room.ringing.size === 0 && room.participants.size <= 1 && !room.fromLink) endRoom(room, 'declined');
       return {};
