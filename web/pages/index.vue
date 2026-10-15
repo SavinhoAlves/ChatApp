@@ -20,6 +20,15 @@ watch(activeConversation, (c) => {
   else if (c.type !== 'DIRECT' && rightPanel.value === 'contact') rightPanel.value = null;
 });
 
+// "Mais" › Dados do grupo/contato (da lista): abre a conversa e em seguida os dados.
+const infoFor = useState<string | null>('ui.infoFor', () => null);
+watch([infoFor, activeId], ([id, active]) => {
+  if (!id || id !== active) return;
+  infoFor.value = null;
+  if (activeConversation.value?.type === 'GROUP') openGroupInfo();
+  else rightPanel.value = 'contact';
+});
+
 function openGroupInfo(adding = false) {
   groupStartAdding.value = adding;
   showInfo.value = true;

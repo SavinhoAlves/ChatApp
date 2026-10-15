@@ -76,6 +76,21 @@ const ago = (iso: string) => {
   const m = Math.round((Date.now() - new Date(iso).getTime()) / 60000);
   return m < 1 ? 'agora' : m < 60 ? `há ${m} min` : `há ${Math.floor(m / 60)} h`;
 };
+// Anel dividido em tracinhos (um por status), como no WhatsApp: vistos em cinza, novos coloridos.
+function ringStyle(items: { viewed?: boolean }[], allSeen = false) {
+  const n = items.length;
+  const color = (i: number) => (allSeen || items[i]!.viewed ? 'rgb(255 255 255 / 0.25)' : 'rgb(var(--accent-rgb))');
+  if (n <= 1) return { background: color(0) };
+  const gap = n > 12 ? 3 : 6;
+  const seg = 360 / n;
+  const stops = items.map((_, i) => {
+    const a = i * seg + gap / 2;
+    const b = (i + 1) * seg - gap / 2;
+    return `transparent ${i * seg}deg ${a}deg, ${color(i)} ${a}deg ${b}deg, transparent ${b}deg ${(i + 1) * seg}deg`;
+  });
+  return { background: `conic-gradient(${stops.join(', ')})` };
+}
+
 const lastOf = (a: StatusAuthor) => a.statuses[a.statuses.length - 1]!.createdAt;
 </script>
 
@@ -90,7 +105,7 @@ const lastOf = (a: StatusAuthor) => a.statuses[a.statuses.length - 1]!.createdAt
     <div class="status-list">
       <p class="section-label">Status</p>
       <button class="status-row" type="button" :disabled="busy" @click="openMine">
-        <span class="status-ring" :class="{ none: !myAuthor }">
+        <span class="status-ring" :class="{ none: !myAuthor }" :style="myAuthor ? ringStyle(myAuthor.statuses) : undefined">
           <Avatar v-if="me" :name="me.displayName" :seed="me.id" :size="50" :src="me.avatarUrl" />
           <span v-if="!myAuthor" class="status-add"><Plus :size="14" :stroke-width="3" /></span>
         </span>
@@ -103,7 +118,7 @@ const lastOf = (a: StatusAuthor) => a.statuses[a.statuses.length - 1]!.createdAt
       <template v-if="recent.length">
         <p class="section-label">Recentes</p>
         <button v-for="a in recent" :key="a.user.id" class="status-row" type="button" @click="viewing = { author: a, mine: false }">
-          <span class="status-ring"><Avatar :name="a.user.displayName" :seed="a.user.id" :size="50" :src="a.user.avatarUrl" /></span>
+          <span class="status-ring" :style="ringStyle(a.statuses)"><Avatar :name="a.user.displayName" :seed="a.user.id" :size="50" :src="a.user.avatarUrl" /></span>
           <span class="status-row-info">
             <strong>{{ a.user.displayName }}</strong>
             <small>{{ ago(lastOf(a)) }}</small>
@@ -114,7 +129,7 @@ const lastOf = (a: StatusAuthor) => a.statuses[a.statuses.length - 1]!.createdAt
       <template v-if="seen.length">
         <p class="section-label">Vistas</p>
         <button v-for="a in seen" :key="a.user.id" class="status-row" type="button" @click="viewing = { author: a, mine: false }">
-          <span class="status-ring seen"><Avatar :name="a.user.displayName" :seed="a.user.id" :size="50" :src="a.user.avatarUrl" /></span>
+          <span class="status-ring seen" :style="ringStyle(a.statuses, true)"><Avatar :name="a.user.displayName" :seed="a.user.id" :size="50" :src="a.user.avatarUrl" /></span>
           <span class="status-row-info">
             <strong>{{ a.user.displayName }}</strong>
             <small>{{ ago(lastOf(a)) }}</small>

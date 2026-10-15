@@ -658,7 +658,10 @@ function onKeydown(event: KeyboardEvent) {
   }
 }
 
-function onInput() {
+function onInput(e?: Event) {
+  // O v-model ignora o texto enquanto o teclado do Android "compõe" a palavra (sublinhada): lendo direto,
+  // o microfone vira "enviar" já na primeira letra.
+  if (e?.target) draft.value = (e.target as HTMLTextAreaElement).value;
   autosize();
   if (activeId.value && !editing.value && draft.value.trim()) chat.notifyTyping(activeId.value);
 }

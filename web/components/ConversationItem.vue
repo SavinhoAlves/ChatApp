@@ -1,21 +1,5 @@
 <script setup lang="ts">
-import {
-  Archive,
-  ArchiveRestore,
-  Bell,
-  BellOff,
-  ChevronDown,
-  CircleDot,
-  Eraser,
-  LogOut,
-  Pin,
-  PinOff,
-  Star,
-  Store,
-  Trash2,
-  UserCheck,
-  UserX,
-} from '@lucide/vue';
+import { Archive, ArchiveRestore, Bell, BellOff, Check, ChevronDown, CircleDot, Ellipsis, Eraser, Info, ListPlus, Lock, LogOut, Pin, PinOff, Plus, Star, Store, Trash2, UserCheck, UserX } from '@lucide/vue';
 import type { Conversation } from '~/types';
 
 const props = defineProps<{ conv: Conversation; active: boolean; online: boolean }>();
@@ -127,6 +111,97 @@ async function leaveGroup() {
   void run(() => chat.removeMember(props.conv.id, me.value!.id));
 }
 
+// ---- Arrastar o card (celular), como no WhatsApp ----
+// Esquerda: "Mais" e "Arquivar". Direita: "Lida/Não lida" e "Fixar". Solta além do meio: fica aberto.
+const ACTIONS_W = 160;
+const swipeX = ref(0);
+const swipeOpen = ref<'left' | 'right' | null>(null);
+let touch: { x: number; y: number; base: number } | null = null;
+let horizontal = false;
+const dragging = ref(false);
+function swipeStart(e: TouchEvent) {
+  press.onTouchstart(e);
+  const t = e.touches[0];
+  if (!t) return;
+  touch = { x: t.clientX, y: t.clientY, base: swipeX.value };
+  horizontal = false;
+}
+function swipeMove(e: TouchEvent) {
+  press.onTouchmove(e);
+  const t = e.touches[0];
+  if (!touch || !t) return;
+  const dx = t.clientX - touch.x;
+  if (!horizontal) {
+    if (Math.abs(dx) < 10 || Math.abs(dx) < Math.abs(t.clientY - touch.y) * 1.4) return;
+    horizontal = true;
+    dragging.value = true;
+  }
+  swipeX.value = Math.max(-ACTIONS_W, Math.min(ACTIONS_W, touch.base + dx));
+}
+function swipeEnd() {
+  press.onTouchend();
+  if (horizontal) {
+    if (swipeX.value <= -ACTIONS_W / 2) {
+      swipeX.value = -ACTIONS_W;
+      swipeOpen.value = 'left';
+    } else if (swipeX.value >= ACTIONS_W / 2) {
+      swipeX.value = ACTIONS_W;
+      swipeOpen.value = 'right';
+    } else closeSwipe();
+  }
+  touch = null;
+  dragging.value = false;
+}
+function closeSwipe() {
+  swipeX.value = 0;
+  swipeOpen.value = null;
+}
+function openOrClose() {
+  if (swipeOpen.value) closeSwipe();
+  else open();
+}
+async function swipeAction(fn: () => unknown) {
+  closeSwipe();
+  await fn();
+}
+
+const unread = computed(() => props.conv.unreadCount > 0);
+const toggleRead = () =>
+  unread.value
+    ? run(async () => {
+        await chat.setConversationPrefs(props.conv.id, { forcedUnread: false });
+        chat.markRead(props.conv.id);
+      })
+    : markUnread();
+
+// ---- "Mais": janela de baixo com as opções ----
+const moreOpen = ref(false);
+const listsOpen = ref(false);
+const { lists, toggleInList, createList } = useLists();
+const peerName = computed(() => (otherUser.value ? chat.conversationTitle(props.conv) : ''));
+
+function openInfo() {
+  moreOpen.value = false;
+  emit('open', props.conv.id);
+  useState<string | null>('ui.infoFor').value = props.conv.id;
+}
+async function lockConversation() {
+  moreOpen.value = false;
+  await alert({ title: 'Trancar conversa', message: 'Em breve: esconder a conversa atrás de senha ou digital.' });
+}
+async function toggleList(listId: string) {
+  await toggleInList(listId, props.conv.id).catch((e) => alert((e as Error).message));
+}
+async function newListWithThis() {
+  const name = await useConfirm().prompt({ title: 'Nova lista', placeholder: 'Ex.: Família, Trabalho', confirmLabel: 'Criar', maxLength: 40 });
+  if (name) await createList(name, [props.conv.id]).catch((e) => alert((e as Error).message));
+}
+const inList = (id: string) => lists.value.find((l) => l.id === id)?.conversationIds.includes(props.conv.id);
+function more(fn: () => unknown) {
+  moreOpen.value = false;
+  void fn();
+}
+
 async function toggleBlock() {
   menuOpen.value = false;
   const user = otherUser.value;
@@ -146,16 +221,38 @@ async function toggleBlock() {
 </script>
 
 <template>
-  <div ref="root" class="conv-row">
+  <div ref="root" class="conv-row" :class="{ swiping: swipeX !== 0 }">
+    <!-- Ações reveladas ao arrastar -->
+    <div v-if="swipeX > 0" class="swipe-actions left">
+      <button type="button" class="sa-read" @click="swipeAction(toggleRead)">
+        <CircleDot :size="20" :stroke-width="2" /> {{ unread ? 'Lida' : 'Não lida' }}
+      </button>
+      <button type="button" class="sa-pin" @click="swipeAction(togglePin)">
+        <PinOff v-if="conv.pinned" :size="20" :stroke-width="2" />
+        <Pin v-else :size="20" :stroke-width="2" />
+        {{ conv.pinned ? 'Desafixar' : 'Fixar' }}
+      </button>
+    </div>
+    <div v-if="swipeX < 0" class="swipe-actions right">
+      <button type="button" class="sa-more" @click="swipeAction(() => (moreOpen = true))">
+        <Ellipsis :size="20" :stroke-width="2" /> Mais
+      </button>
+      <button type="button" class="sa-archive" @click="swipeAction(toggleArchive)">
+        <ArchiveRestore v-if="conv.archived" :size="20" :stroke-width="2" />
+        <Archive v-else :size="20" :stroke-width="2" />
+        {{ conv.archived ? 'Desarquivar' : 'Arquivar' }}
+      </button>
+    </div>
     <button
       class="conv-item"
       :class="{ active }"
       type="button"
-      @click="open"
-      @touchstart.passive="press.onTouchstart"
-      @touchmove.passive="press.onTouchmove"
-      @touchend="press.onTouchend"
-      @touchcancel="press.onTouchcancel"
+      :style="swipeX ? { transform: `translateX(${swipeX}px)`, transition: dragging ? 'none' : undefined } : undefined"
+      @click="openOrClose"
+      @touchstart.passive="swipeStart"
+      @touchmove.passive="swipeMove"
+      @touchend="swipeEnd"
+      @touchcancel="swipeEnd"
       @contextmenu="press.onContextmenu"
     >
       <Avatar
@@ -240,6 +337,49 @@ async function toggleBlock() {
         </button>
       </div>
     </Transition>
+    </Teleport>
+
+    <!-- "Mais" (arrastar para a esquerda) -->
+    <Teleport to="body">
+      <div v-if="moreOpen" class="overlay" @click.self="moreOpen = false">
+        <div class="dialog more-sheet" role="dialog" aria-modal="true" :aria-label="chat.conversationTitle(conv)">
+          <p class="more-title">{{ chat.conversationTitle(conv) }}</p>
+          <div class="more-group">
+            <button type="button" @click="more(toggleMute)">
+              <Bell v-if="isMuted" :size="19" :stroke-width="2" /><BellOff v-else :size="19" :stroke-width="2" />
+              {{ isMuted ? 'Ativar notificações' : 'Silenciar' }}
+            </button>
+            <button type="button" @click="openInfo">
+              <Info :size="19" :stroke-width="2" /> {{ conv.type === 'GROUP' ? 'Dados do grupo' : 'Dados do contato' }}
+            </button>
+            <button type="button" @click="lockConversation"><Lock :size="19" :stroke-width="2" /> Trancar conversa</button>
+            <button type="button" @click="more(toggleFavorite)">
+              <Star :size="19" :stroke-width="2" :fill="conv.favorited ? 'currentColor' : 'none'" />
+              {{ conv.favorited ? 'Remover dos favoritos' : 'Adicionar aos favoritos' }}
+            </button>
+            <button type="button" @click="listsOpen = !listsOpen"><ListPlus :size="19" :stroke-width="2" /> Adicionar à lista</button>
+            <div v-if="listsOpen" class="more-lists">
+              <button v-for="l in lists" :key="l.id" type="button" @click="toggleList(l.id)">
+                <Check v-if="inList(l.id)" :size="16" :stroke-width="2.6" /><span v-else class="more-lists-gap" />
+                {{ l.name }}
+              </button>
+              <button type="button" @click="newListWithThis"><Plus :size="16" :stroke-width="2.4" /> Nova lista</button>
+            </div>
+            <button type="button" @click="more(clearConversation)"><Eraser :size="19" :stroke-width="2" /> Limpar conversa</button>
+          </div>
+          <div class="more-group danger">
+            <template v-if="conv.type === 'DIRECT'">
+              <button v-if="!chat.isSelfChat(conv)" type="button" @click="more(toggleBlock)">
+                <UserCheck v-if="conv.youBlocked" :size="19" :stroke-width="2" /><UserX v-else :size="19" :stroke-width="2" />
+                {{ conv.youBlocked ? `Desbloquear ${peerName}` : `Bloquear ${peerName}` }}
+              </button>
+              <button type="button" @click="more(deleteConversation)"><Trash2 :size="19" :stroke-width="2" /> Apagar conversa</button>
+            </template>
+            <button v-else type="button" @click="more(leaveGroup)"><LogOut :size="19" :stroke-width="2" /> Sair do grupo</button>
+          </div>
+          <button type="button" class="btn btn-ghost btn-block" @click="moreOpen = false">Cancelar</button>
+        </div>
+      </div>
     </Teleport>
   </div>
 </template>

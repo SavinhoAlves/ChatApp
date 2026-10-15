@@ -5727,3 +5727,134 @@ select {
   font-weight: 700;
   letter-spacing: -0.03em;
 }
+
+/* iPhone dá zoom sozinho ao focar campos com letra menor que 16px (editar, digitar, buscar): no celular, 16px. */
+@media (max-width: 760px) {
+  input,
+  textarea,
+  select,
+  .input,
+  .composer-input {
+    font-size: 16px !important;
+  }
+}
+
+/* ---------- Lista: arrastar o card (Mais / Arquivar · Lida / Fixar) e janela "Mais" ---------- */
+.conv-row {
+  position: relative;
+  overflow: hidden;
+  border-radius: 16px;
+}
+
+.conv-row .conv-item {
+  position: relative;
+  z-index: 1;
+  transition: transform 0.22s var(--ease);
+}
+
+/* Celular: o card precisa de fundo para cobrir os botões que aparecem ao arrastar. */
+@media (max-width: 760px) {
+  .conv-row .conv-item {
+    background: rgb(var(--bg-rgb));
+  }
+}
+
+.swipe-actions {
+  position: absolute;
+  inset: 0;
+  display: flex;
+}
+
+.swipe-actions.left {
+  justify-content: flex-start;
+}
+
+.swipe-actions.right {
+  justify-content: flex-end;
+}
+
+.swipe-actions button {
+  display: grid;
+  place-content: center;
+  justify-items: center;
+  gap: 4px;
+  width: 80px;
+  border: 0;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.sa-read {
+  background: #2563eb;
+}
+
+.sa-pin {
+  background: #64748b;
+}
+
+.sa-more {
+  background: #475569;
+}
+
+.sa-archive {
+  background: rgb(var(--accent-deep-rgb));
+}
+
+.more-sheet {
+  gap: 10px;
+  padding: 6px 14px max(14px, env(safe-area-inset-bottom));
+}
+
+.more-title {
+  margin: 6px 0 2px;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 600;
+  text-align: center;
+}
+
+.more-group {
+  display: grid;
+  overflow: hidden;
+  border: 1px solid var(--glass-border);
+  border-radius: 18px;
+  background: var(--glass);
+}
+
+.more-group > button,
+.more-lists > button {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 13px 16px;
+  border: 0;
+  border-bottom: 1px solid var(--glass-border);
+  background: transparent;
+  color: var(--text);
+  font-size: 15.5px;
+  text-align: left;
+}
+
+.more-group > button:last-child {
+  border-bottom: 0;
+}
+
+.more-group.danger > button {
+  color: var(--danger);
+}
+
+.more-lists {
+  display: grid;
+  padding-left: 18px;
+  background: rgb(0 0 0 / 0.15);
+}
+
+.more-lists > button {
+  padding: 10px 14px;
+  font-size: 14.5px;
+}
+
+.more-lists-gap {
+  width: 16px;
+}
