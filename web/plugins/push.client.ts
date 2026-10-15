@@ -35,6 +35,10 @@ export default defineNuxtPlugin(() => {
         if (typeof id === 'string') void openFromNotification(id);
       });
     }
+    // Android: canal de importância alta = toca o som e mostra o balão (inclusive na tela bloqueada).
+    if (platform === 'android') {
+      await PushNotifications.createChannel({ id: 'messages', name: 'Mensagens', importance: 5, visibility: 1, vibration: true, lights: true }).catch(() => {});
+    }
     let perm = await PushNotifications.checkPermissions();
     if (perm.receive === 'prompt' || perm.receive === 'prompt-with-rationale') perm = await PushNotifications.requestPermissions();
     // A cada abertura: o token pode mudar e passa a valer para a sessão atual.

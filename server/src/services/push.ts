@@ -183,6 +183,8 @@ async function sendFcm(token: string, p: Payload): Promise<SendResult> {
           // tag: avisos da mesma conversa se substituem em vez de empilhar.
           notification: {
             sound: 'default',
+            channel_id: 'messages',
+            visibility: 'PUBLIC',
             ...(p.threadId && { tag: p.threadId }),
             ...(p.badge !== undefined && { notification_count: p.badge }),
           },
