@@ -508,7 +508,7 @@ const isMac = import.meta.client && /Mac|iPhone|iPad/.test(navigator.platform);
           <p>No topo da conversa aparecem as opções Bloquear e Adicionar.</p>
           <h3>Problemas ou sugestões</h3>
           <p>Fale com quem administra este servidor do Zynko.</p>
-          <small class="settings-note">Zynko · versão 0.1.0</small>
+          <small class="settings-note">Zynko · versão 1.0.3</small>
         </section>
       </template>
     </div>
