@@ -95,7 +95,9 @@ await app.register(fastifyStatic, {
 if (existsSync(config.webDist)) {
   await app.register(fastifyStatic, {
     root: config.webDist,
-    wildcard: false,
+    // Procura o arquivo no disco a cada pedido: um "npm run generate" novo vale na hora, sem reiniciar
+    // (com wildcard: false a lista era montada só ao iniciar e os arquivos novos sumiam).
+    wildcard: true,
     cacheControl: false,
     setHeaders(reply, filePath) {
       const immutable = filePath.includes('/_nuxt/') || filePath.includes('\\_nuxt\\');
@@ -103,8 +105,12 @@ if (existsSync(config.webDist)) {
     },
   });
   app.setNotFoundHandler((request, reply) => {
+    // Arquivo de código que não existe (_nuxt) é 404 de verdade: devolver a página no lugar deixava o app em branco.
     const isApi =
-      request.url.startsWith('/api') || request.url.startsWith('/socket.io') || request.url.startsWith('/uploads');
+      request.url.startsWith('/api') ||
+      request.url.startsWith('/socket.io') ||
+      request.url.startsWith('/uploads') ||
+      request.url.startsWith('/_nuxt/');
     if (request.method === 'GET' && !isApi) return reply.sendFile('index.html');
     return reply.code(404).send({ error: 'Não encontrado' });
   });
