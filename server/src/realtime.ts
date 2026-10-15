@@ -100,22 +100,30 @@ export async function setupRealtime(app: FastifyInstance, redis?: Redis) {
   setRealtime(io, presence);
 
   // Autenticação: o front envia o JWT em handshake.auth.token.
+  // "unauthorized" só quando o login é inválido de verdade (o app desconecta a pessoa ao receber isso).
+  // Falha passageira (banco reiniciando etc.) vira "unavailable" e o app só tenta de novo.
   io.use(async (socket, next) => {
+    const token = socket.handshake.auth?.token;
+    let payload: { sub: string; sid?: string };
     try {
-      const token = socket.handshake.auth?.token;
       if (typeof token !== 'string') throw new Error('sem token');
-      const payload = app.jwt.verify<{ sub: string; sid?: string }>(token);
+      payload = app.jwt.verify<{ sub: string; sid?: string }>(token);
       if (!payload.sid) throw new Error('token sem sessão');
+    } catch {
+      return next(new Error('unauthorized'));
+    }
+    try {
       const session = await prisma.session.findUnique({
         where: { id: payload.sid },
         select: { userId: true, revokedAt: true },
       });
-      if (!session || session.revokedAt || session.userId !== payload.sub) throw new Error('sessão inválida');
+      if (!session || session.revokedAt || session.userId !== payload.sub) return next(new Error('unauthorized'));
       socket.data.userId = session.userId;
       socket.data.sessionId = payload.sid;
       next();
-    } catch {
-      next(new Error('unauthorized'));
+    } catch (error) {
+      app.log.error(error, 'falha ao validar a sessão do socket');
+      next(new Error('unavailable'));
     }
   });
 

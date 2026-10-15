@@ -700,7 +700,9 @@ export function useChat() {
       connected.value = false;
     });
     s.on('connect_error', (error: Error) => {
-      if (error.message === 'unauthorized') void logout();
+      // Antes de desconectar a pessoa, confirma pela API: só um 401 de verdade apaga o login
+      // (api() já faz o logout nesse caso). Erro passageiro: o socket tenta de novo sozinho.
+      if (error.message === 'unauthorized') void useAuth().api('/me').catch(() => {});
     });
 
     s.on('presence:init', (p: { online: string[] }) => {
