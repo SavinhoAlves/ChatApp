@@ -287,7 +287,8 @@ p {
 .app {
   display: grid;
   grid-template-columns: minmax(300px, 380px) minmax(0, 1fr);
-  height: 100dvh;
+  /* --app-h: altura visível acima do teclado no iPhone (plugins/ios-keyboard). */
+  height: var(--app-h, 100dvh);
   background: var(--surface);
 }
 
@@ -2482,6 +2483,21 @@ body {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
+}
+
+/* iPhone com teclado aberto: a página não rola por trás e o campo encosta no teclado
+   (sem o espaço da barra de início, que fica escondida atrás do teclado). */
+html.kb-open,
+html.kb-open body {
+  overflow: hidden;
+}
+
+html.kb-open .composer {
+  padding-bottom: 8px;
+}
+
+html.kb-open .tabbar {
+  display: none;
 }
 
 .only-touch {
