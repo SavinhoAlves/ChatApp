@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Archive, Bell, Camera, ChevronRight, EllipsisVertical, LogOut, MessageSquarePlus, Plus, Search, Settings, Smartphone, UserPlus, Users } from '@lucide/vue';
+import { Archive, Bell, Camera, CheckCheck, ChevronRight, Ellipsis, LogOut, Plus, Search, Settings, Smartphone, UserPlus, Users } from '@lucide/vue';
 
 const emit = defineEmits<{ 'new-chat': [mode: 'direct' | 'group' | 'contact']; settings: []; camera: [] }>();
 
@@ -9,6 +9,18 @@ const { conversations, archivedConversations, activeId, online, connected, openC
   useChat();
 
 const search = ref('');
+
+// "Marcar todas como lidas" (menu ⋯)
+const hasUnread = computed(() => conversations.value.some((c) => c.unreadCount > 0));
+async function markAllRead() {
+  const chat = useChat();
+  for (const c of conversations.value) {
+    if (c.unreadCount <= 0) continue;
+    // "Marcar como não lida" também conta como não lida: desfaz e marca lida.
+    await chat.setConversationPrefs(c.id, { forcedUnread: false }).catch(() => {});
+    chat.markRead(c.id);
+  }
+}
 
 // "conectando…" só depois de 3 s sem conexão: ao abrir o app a conexão leva um instante e o aviso só piscava.
 const showReconnecting = ref(false);
@@ -120,20 +132,11 @@ function toggleArchived() {
 
 <template>
   <aside class="sidebar">
-    <header class="side-header">
-      <div class="me brand-title">
-        <strong>Zynko</strong>
-        <small v-if="showReconnecting" class="warn">conectando…</small>
-      </div>
-      <button class="icon-btn" type="button" title="Câmera" aria-label="Câmera" @click="emit('camera')">
-        <Camera :size="21" :stroke-width="1.8" />
-      </button>
-      <button class="icon-btn hide-mobile" type="button" title="Nova conversa" aria-label="Nova conversa" @click="emit('new-chat', 'direct')">
-        <Plus :size="20" :stroke-width="1.8" />
-      </button>
+    <!-- Como no WhatsApp: ⋯ à esquerda; câmera e nova conversa à direita; título e busca embaixo -->
+    <header class="side-header list-top">
       <div ref="menuEl" class="header-menu">
         <button
-          class="icon-btn"
+          class="icon-btn round-btn"
           type="button"
           title="Mais opções"
           aria-label="Mais opções"
@@ -141,9 +144,12 @@ function toggleArchived() {
           :aria-expanded="menuOpen"
           @click="menuOpen = !menuOpen"
         >
-          <EllipsisVertical :size="20" :stroke-width="1.8" />
+          <Ellipsis :size="20" :stroke-width="2" />
         </button>
-        <div v-if="menuOpen" class="menu header-dropdown" role="menu">
+        <div v-if="menuOpen" class="menu header-dropdown left" role="menu">
+          <button class="menu-item" role="menuitem" type="button" :disabled="!hasUnread" @click="menuAction(markAllRead)">
+            <CheckCheck :size="15" :stroke-width="2" /> Marcar todas como lidas
+          </button>
           <button class="menu-item" role="menuitem" type="button" @click="menuAction(() => emit('new-chat', 'group'))">
             <Users :size="15" :stroke-width="2" /> Novo grupo
           </button>
@@ -161,7 +167,19 @@ function toggleArchived() {
           </button>
         </div>
       </div>
+      <span class="list-top-gap" />
+      <button class="icon-btn round-btn" type="button" title="Câmera" aria-label="Câmera" @click="emit('camera')">
+        <Camera :size="19" :stroke-width="1.9" />
+      </button>
+      <button class="icon-btn round-btn accent" type="button" title="Nova conversa" aria-label="Nova conversa" @click="emit('new-chat', 'direct')">
+        <Plus :size="20" :stroke-width="2.2" />
+      </button>
     </header>
+
+    <h1 class="list-title">
+      Conversas
+      <small v-if="showReconnecting" class="warn">conectando…</small>
+    </h1>
 
     <div class="side-search">
       <div class="field-icon">
@@ -225,10 +243,6 @@ function toggleArchived() {
         {{ emptyText }}
       </li>
     </ul>
-
-    <button class="fab" type="button" title="Nova conversa" aria-label="Nova conversa" @click="emit('new-chat', 'direct')">
-      <MessageSquarePlus :size="24" :stroke-width="2" />
-    </button>
 
     <DevicesDialog v-if="showDevices" @close="showDevices = false" />
   </aside>

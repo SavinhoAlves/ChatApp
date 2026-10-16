@@ -2360,6 +2360,25 @@ body {
   height: 40px;
 }
 
+/* Celular: teclado já tem emoji. O botão some (sobra espaço para o texto) e as figurinhas vão para o "+". */
+.only-touch {
+  display: none;
+}
+
+@media (pointer: coarse) {
+  .composer-row .emoji-btn {
+    display: none;
+  }
+
+  .composer-row .picker-anchor {
+    margin-right: 0;
+  }
+
+  .only-touch {
+    display: flex;
+  }
+}
+
 .composer-row .picker-anchor {
   margin-right: 4px;
 }
@@ -5097,6 +5116,50 @@ html[data-accent='roxo'] body {
 }
 
 /* Topo da lista: nome do app à esquerda (como "WhatsApp" no topo), câmera e ⋮ à direita. */
+/* Topo da lista de conversas: ⋯ | câmera + nova conversa; título grande e busca embaixo */
+.side-header.list-top {
+  gap: 10px;
+  padding-bottom: 4px;
+}
+
+.list-top-gap {
+  flex: 1;
+}
+
+.round-btn {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: var(--glass-strong);
+  color: var(--text);
+}
+
+.round-btn.accent {
+  background: rgb(var(--accent-rgb));
+  color: #fff;
+}
+
+.header-dropdown.left {
+  right: auto;
+  left: 0;
+}
+
+.list-title {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  margin: 0;
+  padding: 2px 16px 10px;
+  font-size: 30px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+
+.list-title .warn {
+  font-size: 13px;
+  font-weight: 500;
+}
+
 .brand-title strong {
   background: linear-gradient(100deg, rgb(var(--accent-light-rgb)), rgb(var(--accent-rgb)));
   -webkit-background-clip: text;

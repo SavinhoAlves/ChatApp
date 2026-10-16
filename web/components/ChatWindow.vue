@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ArrowLeft, Ban, Pin, Camera, Check, ChevronDown, ChevronUp, Lock, Copy, File, FileText, Images, MapPin, Mic, Phone, Plus, Search, Send, ShieldAlert, Smile, Store, Timer, Trash2, Upload, UserPlus, UserRound, Video, X } from '@lucide/vue';
+import { ArrowLeft, Ban, Camera, Check, ChevronDown, ChevronUp, Copy, File, FileText, Images, Lock, MapPin, Mic, Phone, Pin, Plus, Search, Send, ShieldAlert, Smile, Sticker, Store, Timer, Trash2, Upload, UserPlus, UserRound, Video, X } from '@lucide/vue';
 import type { StickerRef } from '~/composables/useStickers';
 import type { Attachment, Message, User } from '~/types';
 import { formatPhone } from '~/utils/phone';
@@ -552,6 +552,12 @@ watch(scroller, (el, _old, onCleanup) => {
   });
 }, { immediate: true });
 
+function openStickers() {
+  attachMenuOpen.value = false;
+  // Depois do clique: senão o "clicou fora" do seletor fecha na mesma hora.
+  setTimeout(() => (pickerOpen.value = true));
+}
+
 function scrollToBottom() {
   nextTick(() => {
     const el = scroller.value;
@@ -952,11 +958,13 @@ const replyPreviewName = computed(() => (replyTo.value && conv.value ? chat.user
             <button class="menu-item" role="menuitem" type="button" @click="openLocation"><MapPin :size="16" :stroke-width="1.8" /> Localização</button>
             <button class="menu-item" role="menuitem" type="button" @click="openContact"><UserRound :size="16" :stroke-width="1.8" /> Contato</button>
             <button class="menu-item" role="menuitem" type="button" @click="pickDocument"><FileText :size="16" :stroke-width="1.8" /> Documento</button>
+            <!-- No celular o emoji vem do teclado; as figurinhas ficam aqui -->
+            <button class="menu-item only-touch" role="menuitem" type="button" @click="openStickers"><Sticker :size="16" :stroke-width="1.8" /> Figurinha</button>
           </div>
         </span>
         <span ref="pickerRoot" class="picker-anchor">
           <button
-            class="icon-btn"
+            class="icon-btn emoji-btn"
             :class="{ active: pickerOpen }"
             type="button"
             aria-label="Emojis e figurinhas"
