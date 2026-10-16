@@ -278,9 +278,15 @@ p {
 
 /* ---------- Layout principal ---------- */
 
+/* Colunas nunca crescem além da tela por causa de uma linha comprida (filtros, nomes): sem isso o app
+   ficava mais largo que o celular e cortava as bordas. */
+.app > * {
+  min-width: 0;
+}
+
 .app {
   display: grid;
-  grid-template-columns: minmax(300px, 380px) 1fr;
+  grid-template-columns: minmax(300px, 380px) minmax(0, 1fr);
   height: 100dvh;
   background: var(--surface);
 }
@@ -1798,9 +1804,17 @@ button.user-item:hover:not(:disabled) {
 
 /* ---------- Celular: uma coluna por vez ---------- */
 
+/* Tablet / janela estreita: lista mais estreita para sobrar espaço para a conversa. */
+@media (min-width: 761px) and (max-width: 1024px) {
+  .app,
+  .app.info-open {
+    grid-template-columns: minmax(270px, 310px) minmax(0, 1fr);
+  }
+}
+
 @media (max-width: 760px) {
   .app {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
   }
 
   .app .sidebar,
@@ -2055,7 +2069,7 @@ button.user-item:hover:not(:disabled) {
 
 @media (max-width: 760px) {
   .qr-screen {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
     gap: 24px;
     padding: 28px 20px;
   }
@@ -3477,7 +3491,7 @@ kbd {
 @media (max-width: 1100px) {
   /* Tela média ou celular: o painel fica por cima da conversa em vez de espremer. */
   .app.info-open {
-    grid-template-columns: minmax(300px, 380px) 1fr;
+    grid-template-columns: minmax(300px, 380px) minmax(0, 1fr);
   }
 
   .info-panel {
@@ -3494,7 +3508,7 @@ kbd {
 
 @media (max-width: 760px) {
   .app.info-open {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
   }
 }
 
@@ -4176,7 +4190,7 @@ kbd {
   }
 
   .call-grid.n2 {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
     grid-template-rows: repeat(2, 1fr);
   }
 }
@@ -4666,7 +4680,7 @@ html[data-accent='roxo'] body {
 
   /* Espaço para as abas não cobrirem o fim das listas */
   .app:not(.chat-open) .sidebar {
-    padding-bottom: calc(62px + env(safe-area-inset-bottom));
+    padding-bottom: calc(72px + env(safe-area-inset-bottom));
   }
 
   /* ---- Botão flutuante "Nova conversa" ---- */

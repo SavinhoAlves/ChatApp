@@ -870,7 +870,8 @@ const replyPreviewName = computed(() => (replyTo.value && conv.value ? chat.user
         <div class="bubble typing-bubble"><span /><span /><span /></div>
       </div>
 
-      <p v-if="!list.length" class="empty-chat">Nenhuma mensagem ainda. Diga olá! 👋</p>
+      <!-- Só depois de carregar: antes aparecia "nenhuma mensagem" por um instante numa conversa cheia. -->
+      <p v-if="!list.length && messages[conv.id]" class="empty-chat">Nenhuma mensagem ainda. Diga olá! 👋</p>
     </div>
 
     <footer v-if="selecting" class="composer select-bar">
