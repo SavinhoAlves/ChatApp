@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Archive, Bell, Camera, CheckCheck, ChevronRight, Ellipsis, LogOut, Plus, Search, Settings, Smartphone, UserPlus, Users } from '@lucide/vue';
+import { Archive, Bell, Camera, CheckCheck, ChevronRight, CircleCheck, Ellipsis, Plus, Search, Settings, Trash2 } from '@lucide/vue';
 
 const emit = defineEmits<{ 'new-chat': [mode: 'direct' | 'group' | 'contact']; settings: []; camera: [] }>();
 
@@ -9,6 +9,55 @@ const { conversations, archivedConversations, activeId, online, connected, openC
   useChat();
 
 const search = ref('');
+
+// ---- Selecionar conversas (menu ⋯): arquivar, marcar como lida ou apagar várias de uma vez ----
+const selecting = useState('ui.selectingChats', () => false);
+const selected = ref(new Set<string>());
+const visibleIds = computed(() => (showArchived.value ? archivedConversations.value : filtered.value).map((c) => c.id));
+const allSelected = computed(() => visibleIds.value.length > 0 && visibleIds.value.every((id) => selected.value.has(id)));
+function startSelecting() {
+  selected.value = new Set();
+  selecting.value = true;
+}
+function stopSelecting() {
+  selecting.value = false;
+  selected.value = new Set();
+}
+function toggleSelected(id: string) {
+  const next = new Set(selected.value);
+  if (next.has(id)) next.delete(id);
+  else next.add(id);
+  selected.value = next;
+}
+function selectAll() {
+  selected.value = allSelected.value ? new Set() : new Set(visibleIds.value);
+}
+async function bulk(action: 'archive' | 'read' | 'delete') {
+  const chat = useChat();
+  const ids = [...selected.value];
+  if (action === 'delete') {
+    const ok = await confirm({
+      title: `Apagar ${ids.length} conversa${ids.length > 1 ? 's' : ''}?`,
+      message: 'Elas somem da sua lista, mas voltam se chegar mensagem nova.',
+      confirmLabel: 'Apagar',
+      danger: true,
+    });
+    if (!ok) return;
+  }
+  for (const id of ids) {
+    try {
+      if (action === 'archive') await chat.setConversationPrefs(id, { archived: !showArchived.value });
+      else if (action === 'read') {
+        await chat.setConversationPrefs(id, { forcedUnread: false });
+        chat.markRead(id);
+      } else await chat.hideConversation(id);
+    } catch {
+      /* segue com as outras */
+    }
+  }
+  stopSelecting();
+}
+onBeforeUnmount(stopSelecting);
 
 // "Marcar todas como lidas" (menu ⋯)
 const hasUnread = computed(() => conversations.value.some((c) => c.unreadCount > 0));
@@ -133,7 +182,12 @@ function toggleArchived() {
 <template>
   <aside class="sidebar">
     <!-- Como no WhatsApp: ⋯ à esquerda; câmera e nova conversa à direita; título e busca embaixo -->
-    <header class="side-header list-top">
+    <header v-if="selecting" class="side-header list-top select-top">
+      <button class="link-btn" type="button" @click="stopSelecting">Cancelar</button>
+      <strong class="select-count">{{ selected.size ? `${selected.size} selecionada${selected.size > 1 ? 's' : ''}` : 'Selecionar' }}</strong>
+      <button class="link-btn" type="button" @click="selectAll">{{ allSelected ? 'Nenhuma' : 'Todas' }}</button>
+    </header>
+    <header v-else class="side-header list-top">
       <div ref="menuEl" class="header-menu">
         <button
           class="icon-btn round-btn"
@@ -147,27 +201,19 @@ function toggleArchived() {
           <Ellipsis :size="20" :stroke-width="2" />
         </button>
         <div v-if="menuOpen" class="menu header-dropdown left" role="menu">
+          <button class="menu-item" role="menuitem" type="button" @click="menuAction(startSelecting)">
+            <CircleCheck :size="15" :stroke-width="2" /> Selecionar conversas
+          </button>
           <button class="menu-item" role="menuitem" type="button" :disabled="!hasUnread" @click="menuAction(markAllRead)">
             <CheckCheck :size="15" :stroke-width="2" /> Marcar todas como lidas
-          </button>
-          <button class="menu-item" role="menuitem" type="button" @click="menuAction(() => emit('new-chat', 'group'))">
-            <Users :size="15" :stroke-width="2" /> Novo grupo
-          </button>
-          <button class="menu-item" role="menuitem" type="button" @click="menuAction(() => emit('new-chat', 'contact'))">
-            <UserPlus :size="15" :stroke-width="2" /> Adicionar contato
-          </button>
-          <button class="menu-item" role="menuitem" type="button" @click="menuAction(() => (showDevices = true))">
-            <Smartphone :size="15" :stroke-width="2" /> Dispositivos
-          </button>
-          <button class="menu-item" role="menuitem" type="button" @click="menuAction(() => emit('settings'))">
-            <Settings :size="15" :stroke-width="2" /> Configurações
-          </button>
-          <button class="menu-item danger" role="menuitem" type="button" @click="menuAction(confirmLogout)">
-            <LogOut :size="15" :stroke-width="2" /> Desconectar
           </button>
         </div>
       </div>
       <span class="list-top-gap" />
+      <!-- Computador: sem abas embaixo, Configurações fica aqui -->
+      <button class="icon-btn round-btn hide-mobile" type="button" title="Configurações" aria-label="Configurações" @click="emit('settings')">
+        <Settings :size="19" :stroke-width="1.9" />
+      </button>
       <button class="icon-btn round-btn" type="button" title="Câmera" aria-label="Câmera" @click="emit('camera')">
         <Camera :size="19" :stroke-width="1.9" />
       </button>
@@ -225,7 +271,10 @@ function toggleArchived() {
         :conv="conv"
         :active="conv.id === activeId"
         :online="isOnline(conv)"
+        :selecting="selecting"
+        :selected="selected.has(conv.id)"
         @open="openConversation"
+        @toggle="toggleSelected"
       />
       <li v-if="!archivedConversations.length" class="list-empty">Nenhuma conversa arquivada.</li>
     </ul>
@@ -237,12 +286,21 @@ function toggleArchived() {
         :conv="conv"
         :active="conv.id === activeId"
         :online="isOnline(conv)"
+        :selecting="selecting"
+        :selected="selected.has(conv.id)"
         @open="openConversation"
+        @toggle="toggleSelected"
       />
       <li v-if="!filtered.length" class="list-empty">
         {{ emptyText }}
       </li>
     </ul>
+
+    <div v-if="selecting" class="select-actions">
+      <button type="button" :disabled="!selected.size" @click="bulk('archive')"><Archive :size="20" :stroke-width="1.9" /> {{ showArchived ? 'Desarquivar' : 'Arquivar' }}</button>
+      <button type="button" :disabled="!selected.size" @click="bulk('read')"><CheckCheck :size="20" :stroke-width="1.9" /> Lida</button>
+      <button type="button" class="danger" :disabled="!selected.size" @click="bulk('delete')"><Trash2 :size="20" :stroke-width="1.9" /> Apagar</button>
+    </div>
 
     <DevicesDialog v-if="showDevices" @close="showDevices = false" />
   </aside>

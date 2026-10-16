@@ -5257,8 +5257,82 @@ html[data-accent='roxo'] body {
 /* Topo da lista: nome do app à esquerda (como "WhatsApp" no topo), câmera e ⋮ à direita. */
 /* Topo da lista de conversas: ⋯ | câmera + nova conversa; título grande e busca embaixo */
 .side-header.list-top {
+  /* O menu ⋯ abre por cima do título e da busca. */
+  position: relative;
+  z-index: 6;
   gap: 10px;
   padding-bottom: 4px;
+}
+
+/* Selecionar conversas */
+.select-top {
+  justify-content: space-between;
+}
+
+.select-count {
+  font-size: 16px;
+}
+
+.link-btn {
+  padding: 6px 4px;
+  border: 0;
+  background: transparent;
+  color: rgb(var(--accent-rgb));
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.conv-item .select-check.conv-check {
+  position: static;
+  flex: none;
+  width: 22px;
+  height: 22px;
+  margin-right: 2px;
+  border-radius: 50%;
+  transform: none;
+}
+
+.conv-row .conv-item.selected {
+  background: rgb(var(--accent-rgb) / 0.14);
+}
+
+.select-actions {
+  position: fixed;
+  inset: auto 0 0;
+  z-index: 30;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  padding: 8px 8px max(10px, env(safe-area-inset-bottom));
+  border-top: 1px solid var(--glass-border);
+  background: rgb(var(--bg-rgb) / 0.92);
+  backdrop-filter: blur(22px);
+}
+
+.select-actions button {
+  display: grid;
+  justify-items: center;
+  gap: 3px;
+  padding: 6px 0;
+  border: 0;
+  background: transparent;
+  color: rgb(var(--accent-rgb));
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.select-actions button.danger {
+  color: var(--danger);
+}
+
+.select-actions button:disabled {
+  opacity: 0.4;
+}
+
+@media (min-width: 761px) {
+  .select-actions {
+    position: sticky;
+    bottom: 0;
+  }
 }
 
 .list-top-gap {
@@ -6100,13 +6174,6 @@ html[data-accent='roxo'] body {
     box-shadow: 0 0 0 1.5px currentColor !important;
   }
 
-  html[data-platform='android'] .tabbar .tab-settings {
-    display: none;
-  }
-
-  html[data-platform='android'] .tabbar {
-    grid-template-columns: repeat(4, 1fr);
-  }
 }
 
 /* ---------- Fonte: Inter, com pesos mais leves (texto 400, títulos 600/700) ---------- */

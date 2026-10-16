@@ -11,6 +11,7 @@ const newMode = ref<'direct' | 'group' | 'contact'>('direct');
 type Tab = 'updates' | 'calls' | 'communities' | 'chats' | 'settings';
 const tab = ref<Tab>('chats');
 // Painel da direita: dados do contato ou pesquisa na conversa.
+const selectingChats = useState('ui.selectingChats', () => false);
 const rightPanel = ref<'contact' | 'search' | null>(null);
 const groupStartAdding = ref(false);
 
@@ -192,7 +193,7 @@ useHead(() => ({ title: activeConversation.value ? `${conversationTitle(activeCo
     <GroupInfoDialog v-if="showInfo && activeId" :conversation-id="activeId" :start-adding="groupStartAdding" @close="showInfo = false" />
     <CallOverlay />
 
-    <nav v-if="!activeId" class="tabbar" aria-label="Navegação">
+    <nav v-if="!activeId && !selectingChats" class="tabbar" aria-label="Navegação">
       <button type="button" :class="{ active: tab === 'updates' }" @click="goTab('updates')">
         <span class="tabbar-icon"><CircleDashed :size="22" :stroke-width="1.9" /></span>
         Atualizações
@@ -211,13 +212,12 @@ useHead(() => ({ title: activeConversation.value ? `${conversationTitle(activeCo
         </span>
         Conversas
       </button>
-      <!-- iPhone: aba "Você" com a foto de perfil (WhatsApp atual). Android: some (Configurações fica no ⋮). -->
+      <!-- Aba "Você" com a foto de perfil (abre Configurações), no iPhone e no Android. -->
       <button type="button" class="tab-settings" :class="{ active: tab === 'settings' }" @click="goTab('settings')">
         <span class="tabbar-icon">
-          <Avatar v-if="platform === 'ios'" class="tab-avatar" :name="me.displayName" :seed="me.id" :size="24" :src="me.avatarUrl" />
-          <Settings v-else :size="22" :stroke-width="1.9" />
+          <Avatar class="tab-avatar" :name="me.displayName" :seed="me.id" :size="24" :src="me.avatarUrl" />
         </span>
-        {{ platform === 'ios' ? 'Você' : 'Configurações' }}
+        Você
       </button>
     </nav>
     <CameraDialog v-if="showCamera" @close="showCamera = false" @captured="onCaptured" />

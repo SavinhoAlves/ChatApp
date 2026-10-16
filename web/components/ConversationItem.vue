@@ -2,8 +2,8 @@
 import { Archive, ArchiveRestore, Bell, BellOff, Check, ChevronDown, CircleDot, Ellipsis, Eraser, Info, ListPlus, Lock, LogOut, Pin, PinOff, Plus, Star, Store, Trash2, UserCheck, UserX } from '@lucide/vue';
 import type { Conversation } from '~/types';
 
-const props = defineProps<{ conv: Conversation; active: boolean; online: boolean }>();
-const emit = defineEmits<{ open: [id: string] }>();
+const props = defineProps<{ conv: Conversation; active: boolean; online: boolean; selecting?: boolean; selected?: boolean }>();
+const emit = defineEmits<{ open: [id: string]; toggle: [id: string] }>();
 
 const { me } = useAuth();
 const chat = useChat();
@@ -120,6 +120,7 @@ let touch: { x: number; y: number; base: number } | null = null;
 let horizontal = false;
 const dragging = ref(false);
 function swipeStart(e: TouchEvent) {
+  if (props.selecting) return;
   press.onTouchstart(e);
   const t = e.touches[0];
   if (!t) return;
@@ -157,7 +158,9 @@ function closeSwipe() {
   swipeOpen.value = null;
 }
 function openOrClose() {
-  if (swipeOpen.value) closeSwipe();
+  // Selecionando conversas (⋯ › Selecionar): o toque marca/desmarca em vez de abrir.
+  if (props.selecting) emit('toggle', props.conv.id);
+  else if (swipeOpen.value) closeSwipe();
   else open();
 }
 async function swipeAction(fn: () => unknown) {
@@ -255,7 +258,7 @@ async function toggleBlock() {
     </div>
     <button
       class="conv-item"
-      :class="{ active }"
+      :class="{ active: active && !selecting, selected }"
       type="button"
       :style="swipeX ? { transform: `translateX(${swipeX}px)`, transition: dragging ? 'none' : undefined } : undefined"
       @click="openOrClose"
@@ -265,6 +268,9 @@ async function toggleBlock() {
       @touchcancel="swipeEnd"
       @contextmenu="press.onContextmenu"
     >
+      <span v-if="selecting" class="select-check conv-check" :class="{ on: selected }" aria-hidden="true">
+        <Check v-if="selected" :size="13" :stroke-width="3" />
+      </span>
       <Avatar
         :name="chat.conversationTitle(conv)"
         :seed="conv.id"
