@@ -1,10 +1,17 @@
 <script setup lang="ts">
-import { Delete, Fingerprint, Lock } from '@lucide/vue';
+import { Delete, Fingerprint, Lock, ScanFace } from '@lucide/vue';
 
 // Tela de bloqueio: aparece por cima de tudo quando o bloqueio do app está ligado.
+// Com Face ID/digital: um botão grande "Desbloquear" (no iPhone o Face ID só abre depois de um toque).
+// Com PIN: o teclado numérico (sozinho ou como alternativa).
 const lock = useAppLock();
 const { logout } = useAuth();
 const { confirm } = useConfirm();
+
+const bio = computed(() => !!lock.settings.value?.biometric);
+const ios = uiPlatform() === 'ios';
+// Só Face ID/digital, ou o PIN quando a pessoa escolhe "Usar PIN".
+const showPad = ref(lock.hasPin.value && !bio.value);
 
 const pin = ref('');
 const error = ref('');
@@ -17,12 +24,12 @@ const waitSeconds = computed(() => Math.max(0, Math.ceil((lock.waitUntil.value -
 
 async function tryBiometric() {
   error.value = '';
-  await lock.unlockWithBiometric();
+  if (!(await lock.unlockWithBiometric())) error.value = 'Não foi possível confirmar. Tente de novo.';
 }
 
-// Abriu bloqueado: já pede a digital/rosto (como no WhatsApp).
+// App Android: a digital pode abrir sozinha ao mostrar a tela. No iPhone precisa do toque no botão.
 onMounted(() => {
-  if (lock.settings.value?.biometric) setTimeout(() => void tryBiometric(), 300);
+  if (bio.value && isAndroidApp()) setTimeout(() => void tryBiometric(), 300);
 });
 
 async function press(d: string) {
@@ -48,6 +55,7 @@ function back() {
 
 // Teclado físico (computador).
 function onKey(e: KeyboardEvent) {
+  if (!showPad.value) return;
   if (/^\d$/.test(e.key)) void press(e.key);
   else if (e.key === 'Backspace') back();
 }
@@ -56,7 +64,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey));
 
 async function forgot() {
   const ok = await confirm({
-    title: 'Esqueceu o PIN?',
+    title: 'Não consegue desbloquear?',
     message: 'Você sai do Zynko neste aparelho e entra de novo com o código por SMS. O bloqueio é desligado.',
     confirmLabel: 'Sair e entrar de novo',
     danger: true,
@@ -72,24 +80,36 @@ async function forgot() {
     <div class="app-lock-top">
       <span class="app-lock-icon"><Lock :size="26" :stroke-width="2" /></span>
       <h2>Zynko bloqueado</h2>
-      <p>{{ waitSeconds ? `Muitas tentativas. Tente de novo em ${waitSeconds} s.` : 'Digite o seu PIN' }}</p>
+      <p v-if="showPad">{{ waitSeconds ? `Muitas tentativas. Tente de novo em ${waitSeconds} s.` : 'Digite o seu PIN' }}</p>
+      <p v-else>{{ ios ? 'Use o Face ID para abrir o Zynko' : 'Use a digital para abrir o Zynko' }}</p>
     </div>
 
-    <div class="app-lock-dots" :class="{ shake }" aria-hidden="true">
-      <i v-for="i in pinLength" :key="i" :class="{ on: i <= pin.length }" />
-    </div>
-    <p class="app-lock-error" role="alert">{{ error }}</p>
+    <template v-if="showPad">
+      <div class="app-lock-dots" :class="{ shake }" aria-hidden="true">
+        <i v-for="i in pinLength" :key="i" :class="{ on: i <= pin.length }" />
+      </div>
+      <p class="app-lock-error" role="alert">{{ error }}</p>
 
-    <div class="app-lock-pad">
-      <button v-for="d in ['1', '2', '3', '4', '5', '6', '7', '8', '9']" :key="d" type="button" :disabled="!!waitSeconds" @click="press(d)">{{ d }}</button>
-      <button v-if="lock.settings.value?.biometric" type="button" class="pad-icon" aria-label="Usar digital ou rosto" @click="tryBiometric">
-        <Fingerprint :size="26" :stroke-width="1.8" />
+      <div class="app-lock-pad">
+        <button v-for="d in ['1', '2', '3', '4', '5', '6', '7', '8', '9']" :key="d" type="button" :disabled="!!waitSeconds" @click="press(d)">{{ d }}</button>
+        <button v-if="bio" type="button" class="pad-icon" :aria-label="ios ? 'Usar Face ID' : 'Usar digital'" @click="tryBiometric">
+          <component :is="ios ? ScanFace : Fingerprint" :size="26" :stroke-width="1.8" />
+        </button>
+        <span v-else />
+        <button type="button" :disabled="!!waitSeconds" @click="press('0')">0</button>
+        <button type="button" class="pad-icon" aria-label="Apagar" @click="back"><Delete :size="24" :stroke-width="1.8" /></button>
+      </div>
+    </template>
+
+    <template v-else>
+      <button class="btn btn-primary app-lock-unlock" type="button" @click="tryBiometric">
+        <component :is="ios ? ScanFace : Fingerprint" :size="22" :stroke-width="2" />
+        Desbloquear
       </button>
-      <span v-else />
-      <button type="button" :disabled="!!waitSeconds" @click="press('0')">0</button>
-      <button type="button" class="pad-icon" aria-label="Apagar" @click="back"><Delete :size="24" :stroke-width="1.8" /></button>
-    </div>
+      <p class="app-lock-error" role="alert">{{ error }}</p>
+      <button v-if="lock.hasPin.value" class="app-lock-forgot" type="button" @click="showPad = true">Usar PIN</button>
+    </template>
 
-    <button class="app-lock-forgot" type="button" @click="forgot">Esqueci o PIN</button>
+    <button class="app-lock-forgot muted" type="button" @click="forgot">{{ showPad ? 'Esqueci o PIN' : 'Não consigo desbloquear' }}</button>
   </div>
 </template>

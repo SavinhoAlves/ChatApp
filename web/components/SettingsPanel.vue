@@ -177,53 +177,71 @@ async function logoutOthers() {
   });
 }
 
-// ---- Bloqueio do app (PIN + digital/rosto) ----
+// ---- Bloqueio do app: Face ID/digital e/ou PIN, como no WhatsApp ----
+// O Face ID no iPhone só abre logo depois de um toque: por isso ele é pedido direto no clique do botão.
 const lock = useAppLock();
 const bioAvailable = ref(false);
+const bioName = uiPlatform() === 'ios' ? 'Face ID' : 'Digital';
 onMounted(async () => (bioAvailable.value = await lock.biometricAvailable()));
 const LOCK_AFTER = [
   { label: 'Imediatamente', value: 0 },
   { label: 'Após 1 minuto', value: 60 },
   { label: 'Após 30 minutos', value: 1800 },
 ];
-async function askPin(title: string) {
-  const v = await useConfirm().prompt({ title, message: 'De 4 a 6 números.', placeholder: 'PIN', confirmLabel: 'Continuar', maxLength: 6, secret: true, numeric: true });
-  return v && /^\d{4,6}$/.test(v) ? v : v === null ? null : '';
-}
-async function toggleLock(on: boolean, e: Event) {
-  const input = e.target as HTMLInputElement;
-  const { alert } = useConfirm();
-  if (!on) {
-    // Desligar exige o PIN atual.
-    const pin = await useConfirm().prompt({ title: 'Desligar o bloqueio', message: 'Digite o seu PIN.', placeholder: 'PIN', confirmLabel: 'Desligar', maxLength: 6, secret: true, numeric: true });
-    if (pin && (await lock.checkPin(pin))) lock.disable();
-    else {
-      input.checked = true;
-      if (pin) await alert({ title: 'PIN incorreto', message: 'O bloqueio continua ligado.' });
-    }
-    return;
+const lockError = ref('');
+
+async function askNewPin(): Promise<string | null> {
+  const { prompt, alert } = useConfirm();
+  const opts = { placeholder: 'PIN', confirmLabel: 'Continuar', maxLength: 6, secret: true, numeric: true };
+  const pin = await prompt({ ...opts, title: 'Crie um PIN', message: 'De 4 a 6 números.' });
+  if (!pin) return null;
+  if (!/^\d{4,6}$/.test(pin)) {
+    await alert({ title: 'PIN inválido', message: 'Use de 4 a 6 números.' });
+    return null;
   }
-  const pin = await askPin('Crie um PIN');
-  if (!pin) {
-    input.checked = false;
-    if (pin === '') await alert({ title: 'PIN inválido', message: 'Use de 4 a 6 números.' });
-    return;
-  }
-  const again = await askPin('Confirme o PIN');
+  const again = await prompt({ ...opts, title: 'Confirme o PIN', message: 'Digite o mesmo PIN de novo.' });
   if (again !== pin) {
-    input.checked = false;
-    if (again !== null) await alert({ title: 'Os PINs não conferem', message: 'Tente de novo.' });
+    if (again) await alert({ title: 'Os PINs não conferem', message: 'Tente de novo.' });
+    return null;
+  }
+  return pin;
+}
+
+/** Confirma que é o dono antes de afrouxar o bloqueio (Face ID/digital ou PIN). */
+async function confirmOwner(): Promise<boolean> {
+  if (lock.settings.value?.biometric && (await lock.verifyBiometric())) return true;
+  if (!lock.hasPin.value) return false;
+  const pin = await useConfirm().prompt({ title: 'Digite o seu PIN', placeholder: 'PIN', confirmLabel: 'Confirmar', maxLength: 6, secret: true, numeric: true });
+  return !!pin && (await lock.checkPin(pin));
+}
+
+// Interruptor de Face ID/digital: liga direto (sem PIN). Desligar pede o próprio Face ID ou o PIN.
+async function toggleBio(e: Event) {
+  const input = e.target as HTMLInputElement;
+  lockError.value = '';
+  if (input.checked) {
+    const ok = await lock.enableBiometric();
+    input.checked = ok;
+    if (!ok) lockError.value = `Não foi possível ativar o ${bioName}. Confira se ele está configurado no celular.`;
     return;
   }
-  const bio = bioAvailable.value ? await lock.enable(pin, true) : await lock.enable(pin, false);
-  await alert({
-    title: 'Bloqueio ligado',
-    message: bio ? 'O Zynko vai pedir a sua digital/rosto ao abrir. Se não der, use o PIN.' : 'O Zynko vai pedir o PIN ao abrir.',
-  });
+  if (await confirmOwner()) lock.disableBiometric();
+  input.checked = !!lock.settings.value?.biometric;
 }
-async function toggleBio(on: boolean, e: Event) {
-  const ok = await lock.setBiometric(on);
-  (e.target as HTMLInputElement).checked = ok;
+
+// PIN: opcional. Sem Face ID/digital no aparelho, é o que liga o bloqueio.
+async function createOrChangePin() {
+  lockError.value = '';
+  if (lock.hasPin.value && !(await confirmOwner())) return;
+  const pin = await askNewPin();
+  if (pin) await lock.setPin(pin);
+}
+async function removePin() {
+  if (!(await confirmOwner())) return;
+  lock.removePin();
+}
+async function turnOff() {
+  if (await confirmOwner()) lock.disable();
 }
 
 // ---- Privacidade ----
@@ -417,21 +435,23 @@ const isMac = import.meta.client && /Mac|iPhone|iPad/.test(navigator.platform);
       <!-- Privacidade -->
       <template v-else-if="view === 'privacy'">
         <span class="settings-label">Bloqueio do app</span>
-        <label class="settings-toggle">
+        <label v-if="bioAvailable" class="settings-toggle">
           <span class="settings-text">
-            <strong>Exigir PIN ou digital/rosto</strong>
-            <small>Pede para desbloquear ao abrir o Zynko.</small>
+            <strong>Exigir {{ bioName }}</strong>
+            <small>Pede o {{ bioName }} ao abrir o Zynko.</small>
           </span>
-          <input type="checkbox" class="switch" :checked="!!lock.settings.value" @change="toggleLock(($event.target as HTMLInputElement).checked, $event)" />
+          <input type="checkbox" class="switch" :checked="!!lock.settings.value?.biometric" @change="toggleBio" />
         </label>
+        <button class="settings-item" type="button" @click="createOrChangePin">
+          <span class="settings-text">
+            <strong>{{ lock.hasPin.value ? 'Alterar PIN' : bioAvailable ? 'Criar PIN (opcional)' : 'Exigir PIN' }}</strong>
+            <small>{{ bioAvailable ? `Alternativa se o ${bioName} não funcionar.` : 'Pede um PIN de 4 a 6 números ao abrir o Zynko.' }}</small>
+          </span>
+        </button>
+        <button v-if="lock.hasPin.value" class="settings-item danger" type="button" @click="removePin">
+          <span class="settings-text"><strong>Remover PIN</strong></span>
+        </button>
         <template v-if="lock.settings.value">
-          <label v-if="bioAvailable" class="settings-toggle">
-            <span class="settings-text">
-              <strong>Digital / Face ID</strong>
-              <small>Desbloquear com a biometria do celular. O PIN continua valendo.</small>
-            </span>
-            <input type="checkbox" class="switch" :checked="lock.settings.value.biometric" @change="toggleBio(($event.target as HTMLInputElement).checked, $event)" />
-          </label>
           <span class="settings-label">Bloquear automaticamente</span>
           <div class="settings-choices">
             <button
@@ -445,7 +465,11 @@ const isMac = import.meta.client && /Mac|iPhone|iPad/.test(navigator.platform);
               {{ o.label }}
             </button>
           </div>
+          <button class="settings-item danger" type="button" @click="turnOff">
+            <span class="settings-text"><strong>Desligar o bloqueio</strong></span>
+          </button>
         </template>
+        <p v-if="lockError" class="error" role="alert">{{ lockError }}</p>
 
         <span class="settings-label">Contatos bloqueados</span>
         <ul class="settings-users">

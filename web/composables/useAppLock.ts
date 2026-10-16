@@ -1,17 +1,21 @@
 import { Capacitor } from '@capacitor/core';
 
 // Bloqueio do app (Configurações › Privacidade), como no WhatsApp: ao abrir (ou voltar depois do tempo
-// escolhido) pede a digital/rosto do celular; o PIN do app é a alternativa. Tudo fica só neste aparelho.
+// escolhido) pede o Face ID/digital do celular. O PIN do app é opcional (alternativa, ou o único meio
+// em aparelho sem biometria). Tudo fica só neste aparelho.
 // App Android: biometria nativa. iPhone/navegador: o Face ID/Touch ID do próprio navegador (WebAuthn).
+// Atenção: no iPhone o Face ID só pode ser pedido logo depois de um toque; por isso as funções que o
+// pedem são chamadas direto do clique, sem nada demorado antes.
 
 type LockSettings = {
   enabled: boolean;
-  salt: string;
-  pinHash: string;
-  pinLength: number;
   biometric: boolean;
   /** Id da credencial do navegador (WebAuthn) usada para pedir o Face ID/Touch ID. */
   credentialId?: string;
+  /** PIN opcional (guardado só como hash). */
+  salt?: string;
+  pinHash?: string;
+  pinLength?: number;
   /** Depois de quantos segundos fora do app ele volta bloqueado. 0 = sempre. */
   after: number;
 };
@@ -29,10 +33,11 @@ async function hashPin(pin: string, salt: string) {
 
 function load(): LockSettings | null {
   const s = readCache<LockSettings>(KEY);
-  return s?.enabled ? s : null;
+  // Bloqueio sem nenhum meio de desbloquear (dado antigo/corrompido): ignora.
+  return s?.enabled && (s.biometric || s.pinHash) ? s : null;
 }
 
-const isAndroidApp = () => isNativeApp() && Capacitor.getPlatform() === 'android';
+export const isAndroidApp = () => isNativeApp() && Capacitor.getPlatform() === 'android';
 
 export function useAppLock() {
   const settings = useState<LockSettings | null>('lock.settings', () => (import.meta.client ? load() : null));
@@ -40,13 +45,14 @@ export function useAppLock() {
   const locked = useState('lock.locked', () => !!settings.value);
   const tries = useState('lock.tries', () => 0);
   const waitUntil = useState('lock.waitUntil', () => 0);
+  const hasPin = computed(() => !!settings.value?.pinHash);
 
   function save(s: LockSettings | null) {
     settings.value = s;
     writeCache(KEY, s);
   }
 
-  /** Este aparelho tem digital/rosto que dá para usar? */
+  /** Este aparelho tem Face ID/digital que dá para usar? */
   async function biometricAvailable(): Promise<boolean> {
     try {
       if (isAndroidApp()) {
@@ -59,20 +65,20 @@ export function useAppLock() {
     }
   }
 
-  /** Pede a digital/rosto. true = é o dono. */
-  async function verifyBiometric(): Promise<boolean> {
-    const s = settings.value;
+  /** Pede o Face ID/digital. true = é o dono. */
+  async function verifyBiometric(credentialId = settings.value?.credentialId): Promise<boolean> {
     try {
       if (isAndroidApp()) {
         const { NativeBiometric } = await import('@capgo/capacitor-native-biometric');
-        await NativeBiometric.verifyIdentity({ title: 'Desbloquear o Zynko', reason: 'Desbloquear o Zynko', negativeButtonText: 'Usar PIN' });
+        await NativeBiometric.verifyIdentity({ title: 'Desbloquear o Zynko', reason: 'Desbloquear o Zynko', negativeButtonText: 'Cancelar' });
         return true;
       }
-      if (!s?.credentialId) return false;
+      if (!credentialId) return false;
       const res = await navigator.credentials.get({
         publicKey: {
           challenge: crypto.getRandomValues(new Uint8Array(32)),
-          allowCredentials: [{ type: 'public-key', id: fromB64(s.credentialId) }],
+          rpId: location.hostname,
+          allowCredentials: [{ type: 'public-key', id: fromB64(credentialId) }],
           userVerification: 'required',
           timeout: 60_000,
         },
@@ -83,14 +89,14 @@ export function useAppLock() {
     }
   }
 
-  /** Navegador/iPhone: cria a credencial que depois pede o Face ID/Touch ID. */
+  /** Navegador/iPhone: cria a credencial que depois pede o Face ID/Touch ID (já pede o Face ID uma vez). */
   async function createWebCredential(): Promise<string | null> {
     try {
       const cred = (await navigator.credentials.create({
         publicKey: {
           challenge: crypto.getRandomValues(new Uint8Array(32)),
           rp: { name: 'Zynko', id: location.hostname },
-          user: { id: crypto.getRandomValues(new Uint8Array(16)), name: 'zynko-lock', displayName: 'Bloqueio do Zynko' },
+          user: { id: crypto.getRandomValues(new Uint8Array(16)), name: 'Bloqueio do Zynko', displayName: 'Bloqueio do Zynko' },
           pubKeyCredParams: [
             { type: 'public-key', alg: -7 },
             { type: 'public-key', alg: -257 },
@@ -105,19 +111,41 @@ export function useAppLock() {
     }
   }
 
-  async function enable(pin: string, withBiometric: boolean, after = 0) {
-    const salt = toB64(crypto.getRandomValues(new Uint8Array(16)).buffer);
-    let biometric = false;
+  /** Liga o Face ID/digital (chamar direto do toque). Liga o bloqueio se ainda não estava. */
+  async function enableBiometric(): Promise<boolean> {
     let credentialId: string | undefined;
-    if (withBiometric) {
-      if (isAndroidApp()) biometric = await verifyBiometric();
-      else {
-        credentialId = (await createWebCredential()) ?? undefined;
-        biometric = !!credentialId;
-      }
+    if (isAndroidApp()) {
+      if (!(await verifyBiometric())) return false;
+    } else {
+      credentialId = (await createWebCredential()) ?? undefined;
+      if (!credentialId) return false;
     }
-    save({ enabled: true, salt, pinHash: await hashPin(pin, salt), pinLength: pin.length, biometric, credentialId, after });
-    return biometric;
+    const s = settings.value;
+    save({ ...(s ?? { after: 0 }), enabled: true, biometric: true, credentialId: credentialId ?? s?.credentialId });
+    return true;
+  }
+
+  /** Desliga só o Face ID/digital (precisa de PIN para o bloqueio continuar). */
+  function disableBiometric() {
+    const s = settings.value;
+    if (!s) return;
+    if (!s.pinHash) save(null);
+    else save({ ...s, biometric: false, credentialId: undefined });
+  }
+
+  /** Cria ou troca o PIN. Liga o bloqueio se ainda não estava. */
+  async function setPin(pin: string) {
+    const salt = toB64(crypto.getRandomValues(new Uint8Array(16)).buffer);
+    const s = settings.value;
+    save({ ...(s ?? { after: 0, biometric: false }), enabled: true, salt, pinHash: await hashPin(pin, salt), pinLength: pin.length });
+  }
+
+  /** Remove o PIN (só se o Face ID/digital estiver ligado; senão desliga o bloqueio). */
+  function removePin() {
+    const s = settings.value;
+    if (!s) return;
+    if (!s.biometric) save(null);
+    else save({ ...s, salt: undefined, pinHash: undefined, pinLength: undefined });
   }
 
   function disable() {
@@ -125,30 +153,13 @@ export function useAppLock() {
     locked.value = false;
   }
 
-  function update(patch: Partial<Pick<LockSettings, 'after' | 'biometric'>>) {
+  function update(patch: Partial<Pick<LockSettings, 'after'>>) {
     if (settings.value) save({ ...settings.value, ...patch });
-  }
-
-  async function setBiometric(on: boolean) {
-    const s = settings.value;
-    if (!s) return false;
-    if (!on) {
-      update({ biometric: false });
-      return false;
-    }
-    if (isAndroidApp()) {
-      const ok = await verifyBiometric();
-      update({ biometric: ok });
-      return ok;
-    }
-    const credentialId = await createWebCredential();
-    if (credentialId) save({ ...s, biometric: true, credentialId });
-    return !!credentialId;
   }
 
   async function checkPin(pin: string) {
     const s = settings.value;
-    if (!s) return true;
+    if (!s?.pinHash || !s.salt) return false;
     if (Date.now() < waitUntil.value) return false;
     if ((await hashPin(pin, s.salt)) === s.pinHash) {
       tries.value = 0;
@@ -180,11 +191,15 @@ export function useAppLock() {
     settings,
     locked,
     waitUntil,
+    hasPin,
     biometricAvailable,
-    enable,
+    verifyBiometric,
+    enableBiometric,
+    disableBiometric,
+    setPin,
+    removePin,
     disable,
     update,
-    setBiometric,
     checkPin,
     unlockWithPin,
     unlockWithBiometric,

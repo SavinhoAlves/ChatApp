@@ -2472,6 +2472,21 @@ body {
   background: transparent;
 }
 
+.app-lock-unlock {
+  display: inline-flex;
+  gap: 10px;
+  align-items: center;
+  margin-top: 18px;
+  padding: 14px 34px;
+  border-radius: 999px;
+  font-size: 16px;
+}
+
+.app-lock-forgot.muted {
+  color: var(--muted);
+  font-weight: 500;
+}
+
 .app-lock-forgot {
   border: 0;
   background: transparent;
