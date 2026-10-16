@@ -20,6 +20,10 @@ export interface PromptOptions {
   value?: string;
   confirmLabel?: string;
   maxLength?: number;
+  /** Campo de senha/PIN: esconde o que é digitado. */
+  secret?: boolean;
+  /** Abre o teclado numérico no celular. */
+  numeric?: boolean;
 }
 
 type ConfirmModal = { kind: 'confirm'; options: ConfirmOptions; resolve: (ok: boolean) => void };

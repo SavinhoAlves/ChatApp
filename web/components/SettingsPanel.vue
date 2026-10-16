@@ -70,7 +70,7 @@ const titles: Record<View, string> = {
 
 const items: { view: View; label: string; hint: string; icon: Component; desktopOnly?: boolean }[] = [
   { view: 'account', label: 'Conta', hint: 'Dispositivos conectados, seu número', icon: KeyRound },
-  { view: 'privacy', label: 'Privacidade', hint: 'Contatos bloqueados', icon: Lock },
+  { view: 'privacy', label: 'Privacidade', hint: 'Bloqueio do app, contatos bloqueados', icon: Lock },
   { view: 'chats', label: 'Conversas', hint: 'Cor do app, papel de parede, Enter para enviar', icon: MessageSquare },
   { view: 'lists', label: 'Listas', hint: 'Organize conversas: Família, Trabalho…', icon: List },
   { view: 'notifications', label: 'Notificações', hint: 'Avisos de novas mensagens', icon: Bell },
@@ -175,6 +175,55 @@ async function logoutOthers() {
       message: res.revoked ? `${res.revoked} aparelho(s) desconectado(s).` : 'Não havia outros aparelhos conectados.',
     });
   });
+}
+
+// ---- Bloqueio do app (PIN + digital/rosto) ----
+const lock = useAppLock();
+const bioAvailable = ref(false);
+onMounted(async () => (bioAvailable.value = await lock.biometricAvailable()));
+const LOCK_AFTER = [
+  { label: 'Imediatamente', value: 0 },
+  { label: 'Após 1 minuto', value: 60 },
+  { label: 'Após 30 minutos', value: 1800 },
+];
+async function askPin(title: string) {
+  const v = await useConfirm().prompt({ title, message: 'De 4 a 6 números.', placeholder: 'PIN', confirmLabel: 'Continuar', maxLength: 6, secret: true, numeric: true });
+  return v && /^\d{4,6}$/.test(v) ? v : v === null ? null : '';
+}
+async function toggleLock(on: boolean, e: Event) {
+  const input = e.target as HTMLInputElement;
+  const { alert } = useConfirm();
+  if (!on) {
+    // Desligar exige o PIN atual.
+    const pin = await useConfirm().prompt({ title: 'Desligar o bloqueio', message: 'Digite o seu PIN.', placeholder: 'PIN', confirmLabel: 'Desligar', maxLength: 6, secret: true, numeric: true });
+    if (pin && (await lock.checkPin(pin))) lock.disable();
+    else {
+      input.checked = true;
+      if (pin) await alert({ title: 'PIN incorreto', message: 'O bloqueio continua ligado.' });
+    }
+    return;
+  }
+  const pin = await askPin('Crie um PIN');
+  if (!pin) {
+    input.checked = false;
+    if (pin === '') await alert({ title: 'PIN inválido', message: 'Use de 4 a 6 números.' });
+    return;
+  }
+  const again = await askPin('Confirme o PIN');
+  if (again !== pin) {
+    input.checked = false;
+    if (again !== null) await alert({ title: 'Os PINs não conferem', message: 'Tente de novo.' });
+    return;
+  }
+  const bio = bioAvailable.value ? await lock.enable(pin, true) : await lock.enable(pin, false);
+  await alert({
+    title: 'Bloqueio ligado',
+    message: bio ? 'O Zynko vai pedir a sua digital/rosto ao abrir. Se não der, use o PIN.' : 'O Zynko vai pedir o PIN ao abrir.',
+  });
+}
+async function toggleBio(on: boolean, e: Event) {
+  const ok = await lock.setBiometric(on);
+  (e.target as HTMLInputElement).checked = ok;
 }
 
 // ---- Privacidade ----
@@ -367,6 +416,37 @@ const isMac = import.meta.client && /Mac|iPhone|iPad/.test(navigator.platform);
 
       <!-- Privacidade -->
       <template v-else-if="view === 'privacy'">
+        <span class="settings-label">Bloqueio do app</span>
+        <label class="settings-toggle">
+          <span class="settings-text">
+            <strong>Exigir PIN ou digital/rosto</strong>
+            <small>Pede para desbloquear ao abrir o Zynko.</small>
+          </span>
+          <input type="checkbox" class="switch" :checked="!!lock.settings.value" @change="toggleLock(($event.target as HTMLInputElement).checked, $event)" />
+        </label>
+        <template v-if="lock.settings.value">
+          <label v-if="bioAvailable" class="settings-toggle">
+            <span class="settings-text">
+              <strong>Digital / Face ID</strong>
+              <small>Desbloquear com a biometria do celular. O PIN continua valendo.</small>
+            </span>
+            <input type="checkbox" class="switch" :checked="lock.settings.value.biometric" @change="toggleBio(($event.target as HTMLInputElement).checked, $event)" />
+          </label>
+          <span class="settings-label">Bloquear automaticamente</span>
+          <div class="settings-choices">
+            <button
+              v-for="o in LOCK_AFTER"
+              :key="o.value"
+              type="button"
+              class="chip-filter"
+              :class="{ active: lock.settings.value.after === o.value }"
+              @click="lock.update({ after: o.value })"
+            >
+              {{ o.label }}
+            </button>
+          </div>
+        </template>
+
         <span class="settings-label">Contatos bloqueados</span>
         <ul class="settings-users">
           <li v-for="user in blocked" :key="user.id" class="device-row">

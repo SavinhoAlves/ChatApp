@@ -20,7 +20,9 @@ const isDanger = computed(() => modal.value?.kind === 'confirm' && !!modal.value
         <input
           v-model="promptValue"
           class="input"
-          type="text"
+          :type="modal.options.secret ? 'password' : 'text'"
+          :inputmode="modal.options.numeric ? 'numeric' : undefined"
+          :autocomplete="modal.options.secret ? 'off' : undefined"
           :placeholder="modal.options.placeholder"
           :maxlength="modal.options.maxLength ?? 60"
           autofocus

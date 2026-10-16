@@ -1172,7 +1172,7 @@ p {
   height: 1px;
 }
 
-.bubble-meta.overlay {
+.bubble-meta.meta-float {
   position: absolute;
   right: 9px;
   bottom: 5px;
@@ -2361,6 +2361,129 @@ body {
 }
 
 /* Celular: teclado já tem emoji. O botão some (sobra espaço para o texto) e as figurinhas vão para o "+". */
+/* Tela de bloqueio do app */
+.app-lock {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  display: grid;
+  align-content: center;
+  justify-items: center;
+  gap: 18px;
+  padding: max(24px, var(--sat)) 24px max(24px, env(safe-area-inset-bottom));
+  background: radial-gradient(120% 80% at 50% 0%, rgb(var(--accent-rgb) / 0.18), transparent 60%), rgb(var(--bg-rgb));
+  color: var(--text);
+  /* Sem animação de entrada: nada da conversa pode aparecer por trás, nem por um instante. */
+}
+
+.app-lock-top {
+  display: grid;
+  justify-items: center;
+  gap: 8px;
+  text-align: center;
+}
+
+.app-lock-top h2 {
+  margin: 4px 0 0;
+  font-size: 22px;
+}
+
+.app-lock-top p {
+  margin: 0;
+  color: var(--muted);
+}
+
+.app-lock-icon {
+  display: grid;
+  width: 60px;
+  height: 60px;
+  place-items: center;
+  border-radius: 50%;
+  background: rgb(var(--accent-rgb) / 0.16);
+  color: rgb(var(--accent-rgb));
+}
+
+.app-lock-dots {
+  display: flex;
+  gap: 16px;
+  min-height: 16px;
+}
+
+.app-lock-dots i {
+  width: 14px;
+  height: 14px;
+  border: 2px solid var(--muted);
+  border-radius: 50%;
+  transition: background-color 0.12s;
+}
+
+.app-lock-dots i.on {
+  border-color: rgb(var(--accent-rgb));
+  background: rgb(var(--accent-rgb));
+}
+
+.app-lock-dots.shake {
+  animation: lock-shake 0.35s;
+}
+
+@keyframes lock-shake {
+  20%,
+  60% {
+    transform: translateX(-8px);
+  }
+  40%,
+  80% {
+    transform: translateX(8px);
+  }
+}
+
+.app-lock-error {
+  min-height: 18px;
+  margin: -8px 0 0;
+  color: var(--danger);
+  font-size: 13.5px;
+}
+
+.app-lock-pad {
+  display: grid;
+  grid-template-columns: repeat(3, 72px);
+  gap: 14px 26px;
+}
+
+.app-lock-pad button {
+  display: grid;
+  width: 72px;
+  height: 72px;
+  place-items: center;
+  border: 0;
+  border-radius: 50%;
+  background: var(--glass-strong);
+  color: var(--text);
+  font-size: 28px;
+  font-weight: 500;
+}
+
+.app-lock-pad button:active {
+  background: rgb(var(--accent-rgb) / 0.3);
+}
+
+.app-lock-pad .pad-icon {
+  background: transparent;
+}
+
+.app-lock-forgot {
+  border: 0;
+  background: transparent;
+  color: rgb(var(--accent-rgb));
+  font-weight: 600;
+}
+
+.settings-choices {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
 .only-touch {
   display: none;
 }
@@ -5134,7 +5257,7 @@ html[data-accent='roxo'] body {
   color: var(--text);
 }
 
-.round-btn.accent {
+.side-header .round-btn.accent {
   background: rgb(var(--accent-rgb));
   color: #fff;
 }

@@ -6,10 +6,14 @@ watchEffect(() => {
 });
 // iPhone ou Android: cada um com o seu layout (ver "Plataforma" no main.css).
 if (import.meta.client) document.documentElement.dataset.platform = uiPlatform();
+// Bloqueio do app (só com login feito).
+const lock = useAppLock();
+const { token } = useAuth();
 </script>
 
 <template>
   <NuxtPwaAssets />
   <NuxtPage />
+  <AppLockScreen v-if="lock.locked.value && token" />
   <ConfirmDialog />
 </template>

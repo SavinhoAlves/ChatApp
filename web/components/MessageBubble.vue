@@ -370,7 +370,7 @@ function onTouchend() {
         <p v-else-if="message.body" class="bubble-body">{{ message.body }}<span class="meta-spacer" :style="{ width: `${metaW}px` }" /></p>
       </template>
 
-      <div ref="metaEl" class="bubble-meta" :class="{ overlay: metaInline }">
+      <div ref="metaEl" class="bubble-meta" :class="{ 'meta-float': metaInline }">
         <Timer v-if="message.expiresAt && !message.deleted" :size="11" :stroke-width="2.4" class="meta-timer" aria-label="Mensagem temporária" />
         <Star v-if="message.starred && !message.deleted" :size="11" :stroke-width="2.4" fill="currentColor" class="meta-star" aria-label="Favoritada" />
         <span v-if="message.editedAt && !message.deleted">editada</span>
