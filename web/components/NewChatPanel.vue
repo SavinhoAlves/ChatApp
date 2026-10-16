@@ -343,7 +343,7 @@ const titles = { list: 'Nova conversa', group: 'Adicionar participantes', 'group
             <Avatar :name="user.displayName" :seed="user.id" :size="42" :src="user.avatarUrl" />
             <span class="user-info">
               <strong>{{ user.displayName }}</strong>
-              <small>@{{ user.username }}</small>
+              <small v-if="user.phone">{{ formatPhone(user.phone) }}</small>
             </span>
             <span v-if="view === 'group'" class="check" :class="{ on: isSelected(user) }">
               <Check v-if="isSelected(user)" :size="13" :stroke-width="2.6" />

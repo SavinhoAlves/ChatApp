@@ -187,7 +187,7 @@ useHead(() => ({ title: activeConversation.value ? `${conversationTitle(activeCo
       </div>
     </section>
 
-    <ContactInfoPanel v-if="rightPanel === 'contact' && activeId" :conversation-id="activeId" @close="rightPanel = null" />
+    <ContactInfoPanel v-if="rightPanel === 'contact' && activeId" :conversation-id="activeId" @close="rightPanel = null" @search="rightPanel = 'search'" />
     <SearchPanel v-else-if="rightPanel === 'search' && activeId" :conversation-id="activeId" @close="rightPanel = null" />
     <GroupInfoDialog v-if="showInfo && activeId" :conversation-id="activeId" :start-adding="groupStartAdding" @close="showInfo = false" />
     <CallOverlay />

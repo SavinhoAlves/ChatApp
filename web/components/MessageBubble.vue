@@ -116,6 +116,17 @@ const mapPreview = computed(() => {
   };
 });
 
+// Horário sempre à direita, na mesma linha do fim do texto (como no WhatsApp): o texto termina com um
+// espaço invisível da largura do horário e o horário fica posicionado no canto de baixo da bolha.
+const metaEl = ref<HTMLElement | null>(null);
+const metaW = ref(0);
+const metaInline = computed(() => !!props.message.body && !props.message.deleted && !callLink.value);
+function measureMeta() {
+  if (metaEl.value) metaW.value = Math.ceil(metaEl.value.offsetWidth) + 6;
+}
+onMounted(measureMeta);
+watch(() => [props.message.status, props.message.editedAt, props.message.starred], () => nextTick(measureMeta));
+
 const canAct = computed(() => !props.message.deleted && !props.message.id.startsWith('tmp-'));
 
 // Toque longo (celular) ou clique direito abre o menu da mensagem; no celular o botão ⋮ fica escondido.
@@ -324,7 +335,6 @@ function onTouchend() {
             <Avatar :name="message.attachment.contactName ?? '?'" :seed="message.attachment.contactUserId ?? message.id" :size="38" />
             <span class="bubble-contact-info">
               <strong>{{ message.attachment.contactName }}</strong>
-              <small>@{{ message.attachment.contactUsername }}</small>
             </span>
           </div>
           <button
@@ -357,10 +367,10 @@ function onTouchend() {
           </span>
           <button class="btn btn-primary btn-sm" type="button" @click.stop="emit('join-call', callLink.id)">Entrar</button>
         </div>
-        <p v-else-if="message.body" class="bubble-body">{{ message.body }}</p>
+        <p v-else-if="message.body" class="bubble-body">{{ message.body }}<span class="meta-spacer" :style="{ width: `${metaW}px` }" /></p>
       </template>
 
-      <div class="bubble-meta">
+      <div ref="metaEl" class="bubble-meta" :class="{ overlay: metaInline }">
         <Timer v-if="message.expiresAt && !message.deleted" :size="11" :stroke-width="2.4" class="meta-timer" aria-label="Mensagem temporária" />
         <Star v-if="message.starred && !message.deleted" :size="11" :stroke-width="2.4" fill="currentColor" class="meta-star" aria-label="Favoritada" />
         <span v-if="message.editedAt && !message.deleted">editada</span>

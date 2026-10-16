@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { formatPhone } from '~/utils/phone';
 import { Crown, LogOut, Search, UserMinus, UserPlus, X } from '@lucide/vue';
 import type { User } from '~/types';
 
@@ -109,7 +110,7 @@ const add = (user: User) =>
               <Avatar :name="p.user.displayName" :seed="p.userId" :size="38" :online="!!chat.online.value[p.userId]" :src="p.user.avatarUrl" />
               <span class="user-info">
                 <strong>{{ p.userId === me?.id ? 'Você' : p.user.displayName }}</strong>
-                <small>@{{ p.user.username }}</small>
+                <small v-if="p.user.phone">{{ formatPhone(p.user.phone) }}</small>
               </span>
               <span v-if="p.role === 'ADMIN'" class="tag"><Crown :size="12" :stroke-width="2.2" /> admin</span>
               <button v-if="isAdmin && p.userId !== me?.id" class="btn btn-ghost btn-sm" type="button" :disabled="busy" @click="remove(p.userId)">
@@ -134,7 +135,7 @@ const add = (user: User) =>
                   <Avatar :name="user.displayName" :seed="user.id" :size="34" :src="user.avatarUrl" />
                   <span class="user-info">
                     <strong>{{ user.displayName }}</strong>
-                    <small>@{{ user.username }}</small>
+                    <small v-if="user.phone">{{ formatPhone(user.phone) }}</small>
                   </span>
                   <span class="tag"><UserPlus :size="12" :stroke-width="2.2" /> adicionar</span>
                 </button>

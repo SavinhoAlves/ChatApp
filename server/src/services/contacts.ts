@@ -60,7 +60,7 @@ export async function listContacts(ownerId: string, q?: string) {
           }
         : {}),
     },
-    include: { contact: { select: userSelect } },
+    include: { contact: { select: { ...userSelect, phone: true } } },
   });
   return rows
     .map((r) => withSavedName(r.contact, savedName(r)))

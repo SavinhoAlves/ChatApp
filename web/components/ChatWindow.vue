@@ -171,7 +171,7 @@ const peerOnline = computed(() => {
 
 // Conversa 1:1 com alguém que não está nos contatos: aviso com Bloquear / Adicionar (como no WhatsApp).
 const showUnknownBanner = computed(() => !!conv.value && conv.value.type === 'DIRECT' && !conv.value.peerIsContact);
-const peerLabel = computed(() => (conv.value?.peerPhone ? formatPhone(conv.value.peerPhone) : null) ?? (conv.value ? `@${otherUser(conv.value)?.username ?? ''}` : ''));
+const peerLabel = computed(() => (conv.value?.peerPhone ? formatPhone(conv.value.peerPhone) : null) ?? '');
 const bannerBusy = ref(false);
 
 async function bannerAction(fn: () => Promise<void>) {

@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { formatPhone } from '~/utils/phone';
 import { Check, Phone, Search, Video, X } from '@lucide/vue';
 import type { User } from '~/types';
 
@@ -55,7 +56,7 @@ async function start(video: boolean) {
           <li v-for="u in filtered" :key="u.id">
             <button class="user-item" type="button" @click="toggle(u.id)">
               <Avatar :name="u.displayName" :seed="u.id" :size="38" :src="u.avatarUrl" />
-              <span class="user-info"><strong>{{ u.displayName }}</strong><small>@{{ u.username }}</small></span>
+              <span class="user-info"><strong>{{ u.displayName }}</strong><small v-if="u.phone">{{ formatPhone(u.phone) }}</small></span>
               <span class="check" :class="{ on: selected.includes(u.id) }"><Check v-if="selected.includes(u.id)" :size="13" :stroke-width="2.6" /></span>
             </button>
           </li>

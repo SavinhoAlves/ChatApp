@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { formatPhone } from '~/utils/phone';
 import { Search, UserRound, X } from '@lucide/vue';
 import type { User } from '~/types';
 
@@ -55,7 +56,7 @@ onBeforeUnmount(() => clearTimeout(debounce));
               <Avatar :name="user.displayName" :seed="user.id" :size="38" :src="user.avatarUrl" />
               <span class="user-info">
                 <strong>{{ user.displayName }}</strong>
-                <small>@{{ user.username }}</small>
+                <small v-if="user.phone">{{ formatPhone(user.phone) }}</small>
               </span>
               <UserRound :size="18" :stroke-width="1.8" class="pick-hint" />
             </button>

@@ -272,7 +272,7 @@ const isMac = import.meta.client && /Mac|iPhone|iPad/.test(navigator.platform);
           <Avatar :name="me.displayName" :seed="me.id" :size="64" :src="me.avatarUrl" />
           <span class="settings-profile-info">
             <strong>{{ me.displayName }}</strong>
-            <small>@{{ me.username }}</small>
+            <small v-if="me.phone">{{ formatPhone(me.phone) }}</small>
           </span>
           <ChevronRight :size="18" :stroke-width="2" class="settings-chevron" />
         </button>
@@ -327,12 +327,6 @@ const isMac = import.meta.client && /Mac|iPhone|iPad/.test(navigator.platform);
         </section>
 
         <section class="settings-field">
-          <span class="settings-label">Nome de usuário</span>
-          <div class="settings-value"><span><AtSign :size="14" :stroke-width="2" class="inline-icon" /> {{ me.username }}</span></div>
-          <small class="settings-note">Também dá para te adicionarem por ele.</small>
-        </section>
-
-        <section class="settings-field">
           <span class="settings-label">Telefone</span>
           <div class="settings-value"><span><Phone :size="14" :stroke-width="2" class="inline-icon" /> {{ phone ? formatPhone(phone) : '—' }}</span></div>
         </section>
@@ -379,7 +373,7 @@ const isMac = import.meta.client && /Mac|iPhone|iPad/.test(navigator.platform);
             <Avatar :name="user.displayName" :seed="user.id" :size="38" :src="user.avatarUrl" />
             <div class="device-info">
               <strong>{{ user.displayName }}</strong>
-              <small>{{ user.phone ? formatPhone(user.phone) : `@${user.username}` }}</small>
+              <small>{{ user.phone ? formatPhone(user.phone) : '' }}</small>
             </div>
             <button class="btn btn-ghost btn-sm" type="button" @click="unblock(user)">Desbloquear</button>
           </li>
