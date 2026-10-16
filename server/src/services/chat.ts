@@ -41,7 +41,8 @@ type ReceiptTimes = { deliveredAt: Date | null; readAt: Date | null };
 
 /** Status de uma mensagem enviada: só é "lida"/"entregue" quando todos os destinatários chegaram lá. */
 export function statusOf(receipts: ReceiptTimes[]): MessageStatus {
-  if (receipts.length === 0) return 'sent';
+  // Sem destinatário (conversa com você mesmo): você é quem lê, então já aparece como lida (✓✓ azul), como no WhatsApp.
+  if (receipts.length === 0) return 'read';
   if (receipts.every((r) => r.readAt)) return 'read';
   if (receipts.every((r) => r.deliveredAt)) return 'delivered';
   return 'sent';
