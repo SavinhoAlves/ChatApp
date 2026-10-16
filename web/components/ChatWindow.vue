@@ -204,7 +204,22 @@ async function unblockPeer() {
   if (c && peer) await bannerAction(() => chat.unblockUser(peer.id, c.id));
 }
 
-const addPeer = () => bannerAction(() => chat.addPeerToContacts(conv.value!.id));
+// "Adicionar": como no WhatsApp, confirma o nome (sugere o do perfil) antes de salvar.
+async function addPeer() {
+  const c = conv.value;
+  if (!c) return;
+  const peer = chat.otherUser(c);
+  const name = await useConfirm().prompt({
+    title: 'Adicionar aos contatos',
+    message: c.peerPhone ? formatPhone(c.peerPhone) : '',
+    placeholder: 'Nome do contato',
+    value: peer?.profileName ?? '',
+    confirmLabel: 'Salvar',
+    maxLength: 80,
+  });
+  if (!name) return;
+  await bannerAction(() => chat.addPeerToContacts(c.id, name));
+}
 
 const scroller = ref<HTMLElement | null>(null);
 const input = ref<HTMLTextAreaElement | null>(null);

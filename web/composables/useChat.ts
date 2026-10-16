@@ -191,12 +191,19 @@ export function useChat() {
   }
 
   /** "Adicionar" no aviso de número desconhecido: salva a outra pessoa da conversa 1:1 nos contatos. */
-  async function addPeerToContacts(conversationId: string) {
+  async function addPeerToContacts(conversationId: string, name?: string) {
     const conv = conversations.value.find((c) => c.id === conversationId);
     const peer = conv ? otherUser(conv) : null;
     if (!conv || !peer) return;
-    await api('/contacts', { method: 'POST', body: { query: conv.peerPhone ?? peer.username } });
+    const [firstName, ...rest] = (name ?? '').trim().split(/\s+/);
+    await api('/contacts', {
+      method: 'POST',
+      body: { query: conv.peerPhone ?? peer.username, firstName: firstName || undefined, lastName: rest.join(' ') || undefined },
+    });
     conv.peerIsContact = true;
+    // Busca de novo: o nome salvo passa a aparecer no lugar do número (topo, lista e mensagens).
+    await fetchConversation(conversationId);
+    contactsVersion.value++;
   }
 
   async function createGroup(title: string, memberIds: string[]) {

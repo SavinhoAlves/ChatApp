@@ -57,7 +57,8 @@ export function useAppLock() {
     try {
       if (isAndroidApp()) {
         const { NativeBiometric } = await import('@capgo/capacitor-native-biometric');
-        return (await NativeBiometric.isAvailable()).isAvailable;
+        // useFallback: conta também o PIN/padrão/senha do celular (aparelho sem digital/rosto).
+        return (await NativeBiometric.isAvailable({ useFallback: true })).isAvailable;
       }
       return !!window.PublicKeyCredential && (await PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable());
     } catch {
@@ -69,8 +70,13 @@ export function useAppLock() {
   async function verifyBiometric(credentialId = settings.value?.credentialId): Promise<boolean> {
     try {
       if (isAndroidApp()) {
-        const { NativeBiometric } = await import('@capgo/capacitor-native-biometric');
-        await NativeBiometric.verifyIdentity({ title: 'Desbloquear o Zynko', reason: 'Desbloquear o Zynko', negativeButtonText: 'Cancelar' });
+        const { NativeBiometric, BiometryType } = await import('@capgo/capacitor-native-biometric');
+        // Qualquer biometria do aparelho (digital, rosto, íris) ou o PIN/padrão/senha da tela de bloqueio.
+        await NativeBiometric.verifyIdentity({
+          title: 'Desbloquear o Zynko',
+          reason: 'Desbloquear o Zynko',
+          allowedBiometryTypes: [BiometryType.MULTIPLE, BiometryType.DEVICE_CREDENTIAL],
+        });
         return true;
       }
       if (!credentialId) return false;

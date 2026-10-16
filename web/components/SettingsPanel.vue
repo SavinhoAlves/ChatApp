@@ -181,7 +181,8 @@ async function logoutOthers() {
 // O Face ID no iPhone só abre logo depois de um toque: por isso ele é pedido direto no clique do botão.
 const lock = useAppLock();
 const bioAvailable = ref(false);
-const bioName = uiPlatform() === 'ios' ? 'Face ID' : 'Digital';
+// Usa o que o celular tiver: digital, rosto ou a senha/PIN/padrão da tela de bloqueio.
+const bioName = 'bloqueio do celular';
 onMounted(async () => (bioAvailable.value = await lock.biometricAvailable()));
 const LOCK_AFTER = [
   { label: 'Imediatamente', value: 0 },
@@ -222,7 +223,7 @@ async function toggleBio(e: Event) {
   if (input.checked) {
     const ok = await lock.enableBiometric();
     input.checked = ok;
-    if (!ok) lockError.value = `Não foi possível ativar o ${bioName}. Confira se ele está configurado no celular.`;
+    if (!ok) lockError.value = 'Não foi possível ativar. Confira se o celular tem digital, rosto ou senha configurados.';
     return;
   }
   if (await confirmOwner()) lock.disableBiometric();
@@ -437,15 +438,15 @@ const isMac = import.meta.client && /Mac|iPhone|iPad/.test(navigator.platform);
         <span class="settings-label">Bloqueio do app</span>
         <label v-if="bioAvailable" class="settings-toggle">
           <span class="settings-text">
-            <strong>Exigir {{ bioName }}</strong>
-            <small>Pede o {{ bioName }} ao abrir o Zynko.</small>
+            <strong>Usar o bloqueio do celular</strong>
+            <small>Digital, rosto ou a senha do celular ao abrir o Zynko.</small>
           </span>
           <input type="checkbox" class="switch" :checked="!!lock.settings.value?.biometric" @change="toggleBio" />
         </label>
         <button class="settings-item" type="button" @click="createOrChangePin">
           <span class="settings-text">
             <strong>{{ lock.hasPin.value ? 'Alterar PIN' : bioAvailable ? 'Criar PIN (opcional)' : 'Exigir PIN' }}</strong>
-            <small>{{ bioAvailable ? `Alternativa se o ${bioName} não funcionar.` : 'Pede um PIN de 4 a 6 números ao abrir o Zynko.' }}</small>
+            <small>{{ bioAvailable ? 'Alternativa própria do Zynko, se preferir.' : 'Pede um PIN de 4 a 6 números ao abrir o Zynko.' }}</small>
           </span>
         </button>
         <button v-if="lock.hasPin.value" class="settings-item danger" type="button" @click="removePin">

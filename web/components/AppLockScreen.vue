@@ -81,7 +81,7 @@ async function forgot() {
       <span class="app-lock-icon"><Lock :size="26" :stroke-width="2" /></span>
       <h2>Zynko bloqueado</h2>
       <p v-if="showPad">{{ waitSeconds ? `Muitas tentativas. Tente de novo em ${waitSeconds} s.` : 'Digite o seu PIN' }}</p>
-      <p v-else>{{ ios ? 'Use o Face ID para abrir o Zynko' : 'Use a digital para abrir o Zynko' }}</p>
+      <p v-else>Use a digital, o rosto ou a senha do celular</p>
     </div>
 
     <template v-if="showPad">
@@ -92,7 +92,7 @@ async function forgot() {
 
       <div class="app-lock-pad">
         <button v-for="d in ['1', '2', '3', '4', '5', '6', '7', '8', '9']" :key="d" type="button" :disabled="!!waitSeconds" @click="press(d)">{{ d }}</button>
-        <button v-if="bio" type="button" class="pad-icon" :aria-label="ios ? 'Usar Face ID' : 'Usar digital'" @click="tryBiometric">
+        <button v-if="bio" type="button" class="pad-icon" aria-label="Usar o bloqueio do celular" @click="tryBiometric">
           <component :is="ios ? ScanFace : Fingerprint" :size="26" :stroke-width="1.8" />
         </button>
         <span v-else />
