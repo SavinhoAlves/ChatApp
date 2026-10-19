@@ -66,6 +66,11 @@ jobs:
 
       - name: Gerar o APK assinado
         run: |
+          # Sem a chave o APK sairia sem assinatura (ou com outra) e o Android não deixaria atualizar o app.
+          if [ -z "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" ] || [ -z "$ANDROID_KEYSTORE_PASSWORD" ]; then
+            echo "::error::Faltam os segredos ANDROID_KEYSTORE_BASE64 e/ou ANDROID_KEYSTORE_PASSWORD (Settings › Secrets and variables › Actions)"
+            exit 1
+          fi
           echo "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" | base64 -d > "$RUNNER_TEMP/chat-release.jks"
           export ANDROID_KEYSTORE_FILE="$RUNNER_TEMP/chat-release.jks"
           cd android && ./gradlew assembleRelease --no-daemon
