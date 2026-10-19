@@ -160,7 +160,7 @@ useHead(() => ({ title: activeConversation.value ? `${conversationTitle(activeCo
     <CallsPanel v-else-if="tab === 'calls'" />
     <CommunitiesPanel v-else-if="tab === 'communities'" />
     <NewChatPanel v-else-if="showNew" :initial-view="newMode === 'direct' ? 'list' : newMode" @close="showNew = false" />
-    <ConversationList v-else @new-chat="openNew" @settings="tab = 'settings'" @camera="showCamera = true" />
+    <ConversationList v-else @new-chat="openNew" @camera="showCamera = true" />
 
     <ChatWindow
       v-if="activeId"

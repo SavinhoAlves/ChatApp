@@ -6263,10 +6263,6 @@ html[data-accent='roxo'] body {
     display: none;
   }
 
-  html[data-platform='ios'] .side-header .icon-btn.hide-mobile {
-    display: inline-grid !important;
-  }
-
   /* ---------- Android ---------- */
   /* Barra presa embaixo (Material 3) e abas começando por Conversas, como no WhatsApp do Android. */
   html[data-platform='android'] .tabbar button:nth-child(4) {

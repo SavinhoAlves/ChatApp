@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import { Archive, Bell, Camera, CheckCheck, ChevronRight, CircleCheck, Ellipsis, Plus, Search, Settings, Trash2 } from '@lucide/vue';
+import { Archive, Bell, Camera, CheckCheck, ChevronRight, CircleCheck, Ellipsis, Plus, Search, Trash2 } from '@lucide/vue';
 
-const emit = defineEmits<{ 'new-chat': [mode: 'direct' | 'group' | 'contact']; settings: []; camera: [] }>();
+const emit = defineEmits<{ 'new-chat': [mode: 'direct' | 'group' | 'contact']; camera: [] }>();
 
 const { logout } = useAuth();
 const { confirm } = useConfirm();
@@ -210,10 +210,6 @@ function toggleArchived() {
         </div>
       </div>
       <span class="list-top-gap" />
-      <!-- Computador: sem abas embaixo, Configurações fica aqui -->
-      <button class="icon-btn round-btn hide-mobile" type="button" title="Configurações" aria-label="Configurações" @click="emit('settings')">
-        <Settings :size="19" :stroke-width="1.9" />
-      </button>
       <button class="icon-btn round-btn" type="button" title="Câmera" aria-label="Câmera" @click="emit('camera')">
         <Camera :size="19" :stroke-width="1.9" />
       </button>
