@@ -25,16 +25,67 @@ async function saveNativeToken(value: string | null) {
   else await Preferences.remove({ key: TOKEN_KEY });
 }
 
+// Cópia do login (e do número) em cookie: no iPhone, "Adicionar à Tela de Início" copia os cookies do Safari
+// para o app instalado, mas não o localStorage. Sem isso o PWA abria sem login e pedia o cadastro de novo.
+const PHONE_KEY = 'chat.phone';
+const COOKIE_MAX_AGE = 400 * 24 * 60 * 60;
+
+function readCookie(name: string) {
+  const match = document.cookie.match(new RegExp(`(?:^|; )${name.replace('.', '\\.')}=([^;]*)`));
+  return match ? decodeURIComponent(match[1]!) : null;
+}
+
+function writeCookie(name: string, value: string | null) {
+  const secure = location.protocol === 'https:' ? '; Secure' : '';
+  document.cookie = value
+    ? `${name}=${encodeURIComponent(value)}; Max-Age=${COOKIE_MAX_AGE}; Path=/; SameSite=Lax${secure}`
+    : `${name}=; Max-Age=0; Path=/; SameSite=Lax${secure}`;
+}
+
+/** Login salvo neste navegador: localStorage ou, no PWA recém-instalado, o cookie herdado do Safari. */
+function restoreToken() {
+  try {
+    const stored = localStorage.getItem(TOKEN_KEY);
+    const cookie = readCookie(TOKEN_KEY);
+    if (stored) {
+      // Quem já estava logado ganha a cópia em cookie antes de instalar o app.
+      if (cookie !== stored) writeCookie(TOKEN_KEY, stored);
+      return stored;
+    }
+    if (cookie) localStorage.setItem(TOKEN_KEY, cookie);
+    return cookie;
+  } catch {
+    return null;
+  }
+}
+
+/** Último número que entrou neste aparelho (preenche a tela de login se o login se perder). */
+export function rememberedPhone() {
+  try {
+    return localStorage.getItem(PHONE_KEY) ?? readCookie(PHONE_KEY) ?? '';
+  } catch {
+    return '';
+  }
+}
+
+function rememberPhone(phone: string) {
+  try {
+    localStorage.setItem(PHONE_KEY, phone);
+    writeCookie(PHONE_KEY, phone);
+  } catch {
+    // sem armazenamento: só não preenche da próxima vez
+  }
+}
+
 export function useAuth() {
-  const token = useState<string | null>('auth.token', () =>
-    import.meta.client ? localStorage.getItem(TOKEN_KEY) : null,
-  );
+  const token = useState<string | null>('auth.token', () => (import.meta.client ? restoreToken() : null));
   const me = useState<User | null>('auth.me', () => null);
 
   function setToken(value: string | null) {
     token.value = value;
     if (value) localStorage.setItem(TOKEN_KEY, value);
     else localStorage.removeItem(TOKEN_KEY);
+    writeCookie(TOKEN_KEY, value);
     // App nativo: cópia no armazenamento do Android/iPhone (fora do navegador interno), ver plugins/session.client.ts.
     void saveNativeToken(value);
   }
@@ -107,7 +158,7 @@ export function useAuth() {
 
   /** Passo 1: pede o código por SMS. Devolve o número já normalizado. */
   async function requestCode(phone: string, channel?: 'sms' | 'call') {
-    return api<{ phone: string; channel: 'sms' | 'call' | 'admin'; canSms: boolean; canCall?: boolean; resendInSeconds: number; devCode?: string }>('/auth/phone/request', {
+    return api<{ phone: string; registered?: boolean; channel: 'sms' | 'call' | 'admin'; canSms: boolean; canCall?: boolean; resendInSeconds: number; devCode?: string }>('/auth/phone/request', {
       method: 'POST',
       body: { phone, channel },
     });
@@ -119,6 +170,7 @@ export function useAuth() {
       method: 'POST',
       body: { phone, code, device: deviceInfo() },
     });
+    rememberPhone(phone);
     if (res.token && res.user) startSession({ token: res.token, user: res.user });
     return { needsProfile: !!res.needsProfile, signupToken: res.signupToken };
   }

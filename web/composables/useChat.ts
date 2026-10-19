@@ -114,8 +114,9 @@ export function useChat() {
     const last = conv.lastMessage;
     if (!last) return 'Nenhuma mensagem ainda';
     if (last.deleted) return 'Mensagem apagada';
+    // Minha: sem "Você:" — o card mostra os ✓ antes do texto.
     const mine = last.senderId === me.value?.id;
-    const prefix = mine ? 'Você: ' : conv.type === 'GROUP' ? `${userName(conv, last.senderId).split(' ')[0]}: ` : '';
+    const prefix = mine ? '' : conv.type === 'GROUP' ? `${userName(conv, last.senderId).split(' ')[0]}: ` : '';
     const body = last.body || (last.attachment ? ATTACHMENT_LABELS[last.attachment.type] : '');
     return prefix + body;
   }
