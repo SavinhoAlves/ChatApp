@@ -33,6 +33,11 @@
 
         </activity>
 
+        <!-- Atualização instalada: reabre o app (ou avisa "toque para abrir"). -->
+        <receiver android:name=".UpdatedReceiver" android:exported="false">
+            <intent-filter><action android:name="android.intent.action.MY_PACKAGE_REPLACED" /></intent-filter>
+        </receiver>
+
         <!-- Notificações (Firebase): ícone pequeno da barra de status e cor de destaque. -->
         <meta-data
             android:name="com.google.firebase.messaging.default_notification_channel_id"

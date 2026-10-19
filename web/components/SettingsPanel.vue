@@ -311,9 +311,9 @@ watch(view, (v) => {
 });
 
 // Ajuda: no app Android, a versão instalada; no navegador/PWA, a última publicada em server/apk.
+// Lida de novo a cada abertura: acompanha a versão gerada assim que o app é atualizado.
 const appVersion = ref('');
 async function loadAppVersion() {
-  if (appVersion.value) return;
   try {
     if (isNativeApp() && Capacitor.getPlatform() === 'android' && Capacitor.isPluginAvailable('AppUpdate')) {
       appVersion.value = (await registerPlugin<{ getVersion(): Promise<{ version: string }> }>('AppUpdate').getVersion()).version;
