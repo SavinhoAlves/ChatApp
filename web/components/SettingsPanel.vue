@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { Capacitor, registerPlugin } from '@capacitor/core';
 import {
   ArrowLeft,
   AtSign,
@@ -306,7 +307,23 @@ watch(view, (v) => {
   if (v === 'profile' || v === 'account') void run(loadMe);
   if (v === 'privacy') void loadBlocked();
   if (v === 'notifications') readPermission();
+  if (v === 'help') void loadAppVersion();
 });
+
+// Ajuda: no app Android, a versão instalada; no navegador/PWA, a última publicada em server/apk.
+const appVersion = ref('');
+async function loadAppVersion() {
+  if (appVersion.value) return;
+  try {
+    if (isNativeApp() && Capacitor.getPlatform() === 'android' && Capacitor.isPluginAvailable('AppUpdate')) {
+      appVersion.value = (await registerPlugin<{ getVersion(): Promise<{ version: string }> }>('AppUpdate').getVersion()).version;
+      return;
+    }
+    appVersion.value = (await $fetch<{ version: string }>('/api/app/android')).version;
+  } catch {
+    // Sem conexão ou nenhum APK publicado: a linha mostra só "Zynko".
+  }
+}
 
 // ---- Desconectar ----
 async function logout() {
@@ -605,7 +622,7 @@ const isMac = import.meta.client && /Mac|iPhone|iPad/.test(navigator.platform);
           <p>No topo da conversa aparecem as opções Bloquear e Adicionar.</p>
           <h3>Problemas ou sugestões</h3>
           <p>Fale com quem administra este servidor do Zynko.</p>
-          <small class="settings-note">Zynko · versão 1.0.3</small>
+          <small class="settings-note">Zynko<template v-if="appVersion"> · versão {{ appVersion }}</template></small>
         </section>
       </template>
     </div>
