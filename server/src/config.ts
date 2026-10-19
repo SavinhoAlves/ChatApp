@@ -56,6 +56,9 @@ const parsed = z
     APNS_SANDBOX: z.enum(['true', 'false']).default('false'),
     TURN_USERNAME: z.preprocess(emptyToUndefined, z.string().optional()),
     TURN_CREDENTIAL: z.preprocess(emptyToUndefined, z.string().optional()),
+    // Atualização do app Android: repositório do GitHub (dono/nome) cujos Releases têm o "Zynko-X.Y.Z.apk".
+    // O servidor confere a cada 10 min e baixa a versão nova para a pasta apk; o app então oferece instalar.
+    APK_GITHUB_REPO: z.preprocess(emptyToUndefined, z.string().regex(/^[\w.-]+\/[\w.-]+$/, 'use dono/repositorio').optional()),
   })
   .safeParse(process.env);
 
@@ -105,6 +108,7 @@ export const config = {
     bundleId: env.APNS_BUNDLE_ID,
     host: env.APNS_SANDBOX === 'true' ? 'https://api.sandbox.push.apple.com' : 'https://api.push.apple.com',
   },
+  apkGithubRepo: env.APK_GITHUB_REPO,
   turn: {
     urls: (env.TURN_URL ?? '')
       .split(',')
