@@ -550,9 +550,13 @@ p {
   color: var(--accent);
 }
 
-/* Alfinete de fixada: última coisa à direita, embaixo do horário. */
+/* Sino de silenciada e alfinete de fixada: últimos à direita, embaixo do horário. */
+.conv-flag.muted,
 .conv-flag.pin {
   margin-right: 0;
+}
+
+.conv-flag.pin {
   transform: rotate(45deg);
 }
 
