@@ -61,6 +61,10 @@ onBeforeUnmount(() => {
 
 const isMuted = computed(() => !!props.conv.mutedUntil && new Date(props.conv.mutedUntil).getTime() > Date.now());
 const otherUser = computed(() => (props.conv.type === 'DIRECT' ? chat.otherUser(props.conv) : null));
+const lastIsMine = computed(() => {
+  const last = props.conv.lastMessage;
+  return !!last && !last.deleted && last.senderId === me.value?.id;
+});
 
 function closeOnOutsideClick(event: MouseEvent) {
   const target = event.target as Node;
@@ -281,7 +285,6 @@ async function toggleBlock() {
       <span class="conv-body">
         <span class="conv-top">
           <span class="conv-name">
-            <Pin v-if="conv.pinned" :size="12" :stroke-width="2.4" class="conv-flag" />
             {{ chat.conversationTitle(conv) }}
             <Store v-if="conv.type === 'DIRECT' && otherUser?.isBusiness" :size="12" :stroke-width="2.4" class="conv-flag business" aria-label="Conta comercial" />
           </span>
@@ -290,11 +293,15 @@ async function toggleBlock() {
         <span class="conv-bottom">
           <span class="conv-preview">
             <BellOff v-if="isMuted" :size="12" :stroke-width="2.2" class="conv-flag" />
+            <!-- Última mensagem é minha: ✓ / ✓✓ antes do texto ou do anexo, como no WhatsApp. -->
+            <StatusTicks v-if="lastIsMine" :status="conv.lastMessage!.status ?? 'sent'" />
             {{ chat.previewText(conv) }}
           </span>
+          <!-- Fixada: alfinete na ponta direita, logo abaixo do horário da última interação. -->
           <span class="conv-trailing">
             <Star v-if="conv.favorited" :size="13" :stroke-width="2" fill="currentColor" class="conv-flag star" />
             <span v-if="conv.unreadCount > 0" class="badge">{{ conv.unreadCount > 99 ? '99+' : conv.unreadCount }}</span>
+            <Pin v-if="conv.pinned" :size="14" :stroke-width="2.2" class="conv-flag pin" aria-label="Fixada" />
           </span>
         </span>
       </span>

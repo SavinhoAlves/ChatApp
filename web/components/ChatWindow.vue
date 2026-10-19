@@ -525,6 +525,9 @@ function onMicCancel() {
   void voice.stop(false);
 }
 
+// Áudios subindo por conversa: enquanto isso aparece o balão com o microfone flutuando.
+const sendingVoice = ref<Record<string, number>>({});
+
 async function finishVoice(send: boolean) {
   const id = activeId.value;
   const audio = await voice.stop(send);
@@ -532,6 +535,9 @@ async function finishVoice(send: boolean) {
     if (send && !audio) flash('Áudio muito curto. Segure para gravar.');
     return;
   }
+  sendingVoice.value[id] = (sendingVoice.value[id] ?? 0) + 1;
+  stick.value = true;
+  scrollToBottom();
   try {
     const attachment = await upload(audio.blob, `audio-${Date.now()}.${audio.ext}`);
     chat.send(id, '', null, attachment);
@@ -539,6 +545,8 @@ async function finishVoice(send: boolean) {
     scrollToBottom();
   } catch (e) {
     flash((e as Error).message);
+  } finally {
+    sendingVoice.value[id] = Math.max(0, (sendingVoice.value[id] ?? 1) - 1);
   }
 }
 
@@ -885,6 +893,14 @@ const replyPreviewName = computed(() => (replyTo.value && conv.value ? chat.user
           @contact-open="onContactOpen"
         />
       </template>
+
+      <!-- Áudio subindo: balão com o microfone flutuando até virar a mensagem de verdade -->
+      <div v-if="sendingVoice[conv.id]" class="msg-row mine voice-sending-row" aria-live="polite" aria-label="Enviando áudio">
+        <div class="bubble voice-sending">
+          <span class="vs-mic"><Mic :size="18" :stroke-width="2.2" /></span>
+          <span class="vs-wave" aria-hidden="true"><i v-for="n in 16" :key="n" :style="{ animationDelay: `${(n % 8) * 0.09}s` }" /></span>
+        </div>
+      </div>
 
       <!-- Alguém digitando: bolinha com três pontos pulando, como no WhatsApp -->
       <div v-if="isTypingNow" class="msg-row typing-row" aria-live="polite" aria-label="digitando">

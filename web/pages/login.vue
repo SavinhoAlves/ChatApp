@@ -14,13 +14,20 @@ const step = ref<Step>('phone');
 const error = ref('');
 const loading = ref(false);
 
-const phone = ref('');
+// PWA recém-instalado ou login perdido: já vem com o último número que entrou neste aparelho.
+const phone = ref(import.meta.client ? rememberedPhone() : '');
+// Número que já tem conta: o código só faz entrar ("Bem-vindo de volta"), sem criar outra.
+const registered = ref(false);
 const code = ref('');
 const resendIn = ref(0);
 const signupToken = ref('');
 const displayName = ref('');
 
 const titles: Record<Step, string> = { phone: 'Seu número', code: 'Confirme o código', profile: 'Seu perfil' };
+const title = computed(() => (step.value === 'code' && registered.value ? 'Bem-vindo de volta' : titles[step.value]));
+const subtitle = computed(() =>
+  step.value === 'code' && registered.value ? 'Este número já tem conta no Zynko. Digite o código para entrar.' : subtitles[step.value],
+);
 const subtitles: Record<Step, string> = {
   phone: 'Digite seu número com DDD. Vamos enviar um código para confirmar.',
   code: 'Digite o código para continuar.',
@@ -71,6 +78,7 @@ const sendCode = (via?: 'sms' | 'call') =>
   run(async () => {
     const res = await auth.requestCode(phone.value, via);
     phone.value = res.phone;
+    registered.value = !!res.registered;
     channel.value = res.channel;
     canSms.value = res.canSms;
     canCall.value = res.canCall ?? true;
@@ -250,8 +258,8 @@ useHead({ title: 'Entrar · Zynko' });
         <ArrowLeft :size="20" :stroke-width="2" />
       </NuxtLink>
       <img v-if="step !== 'profile'" class="brand-logo" src="/logo.png" alt="Zynko" width="96" height="96" />
-      <h1>{{ titles[step] }}</h1>
-      <p class="auth-sub">{{ subtitles[step] }}</p>
+      <h1>{{ title }}</h1>
+      <p class="auth-sub">{{ subtitle }}</p>
 
       <!-- Telefone: número -->
       <form v-if="step === 'phone'" class="auth-form" @submit.prevent="sendCode()">
@@ -289,7 +297,7 @@ useHead({ title: 'Entrar · Zynko' });
           </div>
         </label>
         <button class="btn btn-primary btn-block" type="submit" :disabled="loading || code.length !== 6">
-          {{ loading ? 'Verificando…' : 'Confirmar' }}
+          {{ loading ? 'Verificando…' : registered ? 'Entrar' : 'Confirmar' }}
         </button>
         <div class="auth-links">
           <button class="link-btn" type="button" @click="step = 'phone'">Trocar número</button>

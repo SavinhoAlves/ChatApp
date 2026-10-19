@@ -74,9 +74,9 @@ export async function authRoutes(app: FastifyInstance) {
       if (!viaAdmin && !smsCapable && !canCall) throw new HttpError(400, 'Este número não recebe SMS. Use um celular.');
       // 'admin': o código vai para o WhatsApp do administrador, que repassa (qualquer número serve).
       const channel = viaAdmin ? 'admin' : canCall && (wanted === 'call' || !smsCapable) ? 'call' : 'sms';
-      if (!config.registrationOpen && !(await prisma.user.findUnique({ where: { phone }, select: { id: true } }))) {
-        throw new HttpError(403, 'Cadastros estão desativados');
-      }
+      // Número já cadastrado: a tela mostra "Bem-vindo de volta" e o código só faz entrar (nada de criar conta).
+      const registered = !!(await prisma.user.findUnique({ where: { phone }, select: { id: true } }));
+      if (!config.registrationOpen && !registered) throw new HttpError(403, 'Cadastros estão desativados');
 
       const since = new Date(Date.now() - CODE_TTL_MS);
       const recent = await prisma.phoneVerification.findMany({
@@ -110,7 +110,7 @@ export async function authRoutes(app: FastifyInstance) {
       // Só em desenvolvimento com SMS "console": devolve o código para a tela de login mostrar
       // (facilita cadastrar números de teste). Em produção ou com SMS de verdade, nunca.
       const devCode = !config.isProd && config.sms.provider === 'console' ? code : undefined;
-      return { ok: true, phone, channel, canSms: smsCapable, canCall, resendInSeconds: RESEND_COOLDOWN_MS / 1000, devCode };
+      return { ok: true, phone, registered, channel, canSms: smsCapable, canCall, resendInSeconds: RESEND_COOLDOWN_MS / 1000, devCode };
     },
   );
 
