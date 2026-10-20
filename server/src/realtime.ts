@@ -56,6 +56,7 @@ const sendSchema = z
     clientId: z.string().max(64).optional(),
     attachment: attachmentSchema.nullish(),
     forwarded: z.boolean().optional(),
+    viewOnce: z.boolean().optional(),
   })
   .refine((d) => d.body.length > 0 || !!d.attachment, { message: 'Mensagem vazia' });
 const typingSchema = z.object({ conversationId: z.string().min(1), isTyping: z.boolean() });
@@ -164,6 +165,7 @@ export async function setupRealtime(app: FastifyInstance, redis?: Redis) {
           clientId: data.clientId,
           attachment: data.attachment,
           forwarded: data.forwarded,
+          viewOnce: data.viewOnce,
         });
         return { message, clientId: data.clientId };
       }),

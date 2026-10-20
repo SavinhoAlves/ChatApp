@@ -6506,3 +6506,237 @@ select {
 .more-lists-gap {
   width: 16px;
 }
+
+/* ---------- Visualização única (foto, vídeo e áudio) ---------- */
+
+.view-once-icon {
+  flex: none;
+  --once-ink: #fff;
+}
+
+.once-toggle {
+  color: var(--muted);
+}
+
+.once-toggle.on,
+.once-toggle.on:hover {
+  color: var(--accent);
+}
+
+.camera-icon-btn.once-toggle {
+  color: #fff;
+}
+
+.camera-icon-btn.once-toggle.on {
+  color: var(--accent);
+  background: rgb(0 0 0 / 0.55);
+}
+
+/* Bolha: ícone do "1" + Foto / Vídeo / Áudio (ou "Aberta"). */
+.bubble-once {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 140px;
+  padding: 6px 10px 6px 4px;
+  border: 0;
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  font-weight: 600;
+  text-align: left;
+}
+
+.bubble-once .view-once-icon {
+  color: var(--accent);
+}
+
+.msg-row.mine .bubble-once .view-once-icon {
+  color: var(--text);
+  --once-ink: rgb(var(--mine-rgb, var(--accent-rgb)));
+}
+
+.bubble-once.openable {
+  cursor: pointer;
+}
+
+.bubble-once.openable:hover span {
+  text-decoration: underline;
+}
+
+.bubble-once:disabled {
+  cursor: default;
+  opacity: 1;
+}
+
+.bubble-once.opened {
+  color: var(--muted);
+  font-style: italic;
+  font-weight: 500;
+}
+
+.bubble-once.opened .view-once-icon {
+  color: var(--muted);
+}
+
+.bubble-once-error {
+  display: block;
+  padding: 0 4px 4px;
+  color: var(--danger);
+  font-size: 12px;
+}
+
+/* Tela cheia ao abrir. */
+.once-viewer {
+  z-index: 80;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 10px;
+  padding: 0 0 max(16px, env(safe-area-inset-bottom));
+  background: #000;
+  backdrop-filter: none;
+  color: #fff;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+}
+
+.once-viewer-top {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: max(12px, var(--sat)) 12px 0;
+}
+
+.once-viewer-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 600;
+}
+
+.once-viewer-media {
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  place-items: center;
+  padding: 0 8px;
+}
+
+.once-viewer-media img,
+.once-viewer-media video {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+  pointer-events: auto;
+}
+
+.once-viewer-media img {
+  pointer-events: none;
+}
+
+.once-viewer-voice {
+  width: min(360px, 100%);
+  padding: 12px 14px;
+  border-radius: 16px;
+  background: rgb(255 255 255 / 0.08);
+}
+
+.once-viewer-caption {
+  margin: 0 16px;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  text-align: center;
+  font-size: 15px;
+}
+
+.once-viewer-hint {
+  margin: 0 16px;
+  text-align: center;
+  color: rgb(255 255 255 / 0.6);
+  font-size: 12.5px;
+}
+
+/* Prévia da câmera: legenda, visualização única e enviar. */
+.camera-preview .camera-video {
+  object-fit: contain;
+  transform: none;
+}
+
+.camera-caption {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 24px 12px max(16px, env(safe-area-inset-bottom));
+  background: linear-gradient(to top, rgb(0 0 0 / 0.7), transparent);
+}
+
+.camera-caption-input {
+  flex: 1;
+  min-width: 0;
+  height: 44px;
+  padding: 0 16px;
+  border: 1px solid rgb(255 255 255 / 0.25);
+  border-radius: 999px;
+  background: rgb(0 0 0 / 0.45);
+  color: #fff;
+  font-size: 15px;
+}
+
+.camera-caption-input::placeholder {
+  color: rgb(255 255 255 / 0.65);
+}
+
+.camera-once-hint {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: calc(max(16px, env(safe-area-inset-bottom)) + 56px);
+  margin: 0;
+  text-align: center;
+  color: #fff;
+  font-size: 12.5px;
+  text-shadow: 0 1px 3px rgb(0 0 0 / 0.8);
+}
+
+/* Gravação travada: ondas + visualização única em cima, apagar e enviar embaixo. */
+.recording-bar.locked {
+  display: grid;
+  gap: 4px;
+  padding: 8px 8px 6px 14px;
+  border: 1px solid var(--glass-border);
+  border-radius: 22px;
+  background: rgb(255 255 255 / 0.05);
+  backdrop-filter: blur(16px);
+  box-shadow: 0 10px 30px rgb(0 0 0 / 0.35);
+}
+
+.recording-bar.locked .rec-top,
+.recording-bar.locked .rec-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.recording-bar.locked .rec-actions {
+  justify-content: space-between;
+}
+
+.recording-bar.locked .icon-btn {
+  width: 40px;
+  height: 40px;
+  border-color: transparent;
+  border-radius: 50%;
+  background: transparent;
+}
+
+.rec-once-hint {
+  margin: 0;
+  color: var(--accent);
+  font-size: 12px;
+}

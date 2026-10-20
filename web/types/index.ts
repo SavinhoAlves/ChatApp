@@ -23,6 +23,7 @@ export interface ReplyPreview {
   senderId: string;
   body: string;
   deleted: boolean;
+  viewOnce?: boolean;
   attachment?: Pick<Attachment, 'type' | 'url' | 'name' | 'mime'> | null;
 }
 
@@ -70,6 +71,10 @@ export interface Message {
   forwarded?: boolean;
   /** Favoritada por mim (estrela). */
   starred?: boolean;
+  /** Visualização única: a lista não traz o arquivo nem a legenda, só a rota "abrir" (uma vez). */
+  viewOnce?: boolean;
+  /** Visualização única: eu já abri (quem recebeu) ou todos já abriram (quem enviou). */
+  opened?: boolean;
 }
 
 /** "Dados" da mensagem: entregue e lida por destinatário. */

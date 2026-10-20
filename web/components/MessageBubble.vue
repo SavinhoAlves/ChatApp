@@ -57,7 +57,7 @@ const emit = defineEmits<{
 // Mensagem com link de ligação ("Enviar link de ligação"): mostra um cartão com botão para entrar.
 const CALL_LINK = /\/\?call=([A-Za-z0-9_-]{8,64})/;
 const callLink = computed(() => {
-  if (props.message.deleted || !props.message.body) return null;
+  if (props.message.deleted || !props.message.body || props.message.viewOnce) return null;
   const match = CALL_LINK.exec(props.message.body);
   return match ? { id: match[1]!, video: !props.message.body.includes('Ligação de voz') } : null;
 });
@@ -120,7 +120,7 @@ const mapPreview = computed(() => {
 // espaço invisível da largura do horário e o horário fica posicionado no canto de baixo da bolha.
 const metaEl = ref<HTMLElement | null>(null);
 const metaW = ref(0);
-const metaInline = computed(() => !!props.message.body && !props.message.deleted && !callLink.value);
+const metaInline = computed(() => !!props.message.body && !props.message.deleted && !callLink.value && !props.message.viewOnce);
 function measureMeta() {
   if (metaEl.value) metaW.value = Math.ceil(metaEl.value.offsetWidth) + 6;
 }
@@ -137,7 +137,28 @@ const press = useLongPress(
   { rightClick: false },
 );
 
-const canCopy = computed(() => !!props.message.body && !props.message.deleted);
+const canCopy = computed(() => !!props.message.body && !props.message.deleted && !props.message.viewOnce);
+
+// Visualização única: quem recebeu toca e abre uma vez; quem enviou só vê "Foto"/"Aberta".
+const ONCE_LABEL: Record<string, string> = { IMAGE: 'Foto', VIDEO: 'Vídeo', AUDIO: 'Áudio' };
+const onceLabel = computed(() => (props.message.opened ? 'Aberta' : (ONCE_LABEL[props.message.attachment?.type ?? ''] ?? 'Mídia')));
+const canOpenOnce = computed(() => !props.mine && !props.message.opened && !props.selecting);
+const onceView = ref<{ type: 'IMAGE' | 'VIDEO' | 'AUDIO'; url: string; caption: string } | null>(null);
+const onceBusy = ref(false);
+const onceError = ref('');
+async function openOnce() {
+  if (press.consumeClick() || !canOpenOnce.value || onceBusy.value) return;
+  onceBusy.value = true;
+  onceError.value = '';
+  try {
+    const res = await chat.openViewOnce(props.message);
+    onceView.value = { type: res.attachment.type as 'IMAGE' | 'VIDEO' | 'AUDIO', url: res.attachment.url!, caption: res.body };
+  } catch (e) {
+    onceError.value = (e as Error).message;
+  } finally {
+    onceBusy.value = false;
+  }
+}
 async function copyText() {
   menuOpen.value = false;
   await navigator.clipboard?.writeText(props.message.body).catch(() => {});
@@ -206,7 +227,7 @@ function act(name: 'reply' | 'edit' | 'remove' | 'forward' | 'info') {
 
 // Favoritar (estrela) e fixar no topo da conversa.
 const isPinned = computed(() => chat.activeConversation.value?.pinnedMessage?.id === props.message.id);
-const canForward = computed(() => !!props.message.body || (!!props.message.attachment && props.message.attachment.type !== 'LOCATION'));
+const canForward = computed(() => !props.message.viewOnce && (!!props.message.body || (!!props.message.attachment && props.message.attachment.type !== 'LOCATION')));
 async function toggleStar() {
   menuOpen.value = false;
   await chat.setStar(props.message, !props.message.starred).catch(() => {});
@@ -298,8 +319,20 @@ function onTouchend() {
 
       <p v-if="message.deleted" class="bubble-body muted-text"><Ban :size="14" :stroke-width="2" /> Mensagem apagada</p>
       <template v-else>
+        <button
+          v-if="message.viewOnce"
+          class="bubble-once"
+          :class="{ opened: message.opened, openable: canOpenOnce }"
+          type="button"
+          :disabled="!canOpenOnce || onceBusy"
+          :aria-label="canOpenOnce ? `Abrir ${onceLabel.toLowerCase()} de visualização única` : `${onceLabel} de visualização única`"
+          @click.stop="openOnce"
+        >
+          <ViewOnceIcon :size="24" :on="!message.opened" />
+          <span>{{ onceBusy ? 'Abrindo…' : onceLabel }}</span>
+        </button>
         <img
-          v-if="message.attachment?.type === 'STICKER'"
+          v-else-if="message.attachment?.type === 'STICKER'"
           :src="message.attachment.url"
           class="bubble-sticker"
           :alt="`Figurinha ${message.attachment.name ?? ''}`"
@@ -367,7 +400,8 @@ function onTouchend() {
           </span>
           <button class="btn btn-primary btn-sm" type="button" @click.stop="emit('join-call', callLink.id)">Entrar</button>
         </div>
-        <p v-else-if="message.body" class="bubble-body">{{ message.body }}<span class="meta-spacer" :style="{ width: `${metaW}px` }" /></p>
+        <p v-else-if="message.body && !message.viewOnce" class="bubble-body">{{ message.body }}<span class="meta-spacer" :style="{ width: `${metaW}px` }" /></p>
+        <small v-if="onceError" class="bubble-once-error">{{ onceError }}</small>
       </template>
 
       <div ref="metaEl" class="bubble-meta" :class="{ 'meta-float': metaInline }">
@@ -401,7 +435,7 @@ function onTouchend() {
         <button v-if="isSticker" class="menu-item" role="menuitem" type="button" @click="toggleFavorite">
           <Star :size="15" :stroke-width="2" /> {{ favorite ? 'Remover das figurinhas' : 'Salvar figurinha' }}
         </button>
-        <button v-if="mine && !isSticker && message.body" class="menu-item" role="menuitem" type="button" @click="act('edit')"><Pencil :size="15" :stroke-width="2" /> Editar</button>
+        <button v-if="mine && !isSticker && message.body && !message.viewOnce" class="menu-item" role="menuitem" type="button" @click="act('edit')"><Pencil :size="15" :stroke-width="2" /> Editar</button>
         <button class="menu-item danger" role="menuitem" type="button" @click="act('remove')"><Trash2 :size="15" :stroke-width="2" /> Apagar</button>
       </div>
       </Teleport>
@@ -410,6 +444,8 @@ function onTouchend() {
     <button v-if="message.status === 'failed'" class="retry" type="button" @click="emit('retry', message)">
       <RotateCw :size="12" :stroke-width="2" /> Falha ao enviar · tocar para tentar de novo
     </button>
+
+    <ViewOnceViewer v-if="onceView" :type="onceView.type" :url="onceView.url" :caption="onceView.caption" @close="onceView = null" />
 
     <div v-if="lightbox && message.attachment" class="overlay lightbox" @click="lightbox = false">
       <img :src="message.attachment.url" alt="Imagem enviada" />

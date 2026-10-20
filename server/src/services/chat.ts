@@ -28,8 +28,8 @@ export const userSelect = {
 } satisfies Prisma.UserSelect;
 
 export const messageInclude = {
-  receipts: { select: { userId: true, deliveredAt: true, readAt: true } },
-  replyTo: { select: { id: true, senderId: true, body: true, deletedAt: true, attachmentType: true, attachmentUrl: true, attachmentName: true, attachmentMime: true } },
+  receipts: { select: { userId: true, deliveredAt: true, readAt: true, openedAt: true } },
+  replyTo: { select: { id: true, senderId: true, body: true, deletedAt: true, viewOnce: true, attachmentType: true, attachmentUrl: true, attachmentName: true, attachmentMime: true } },
   stars: { select: { userId: true } },
 } satisfies Prisma.MessageInclude;
 
@@ -86,29 +86,44 @@ function buildAttachment(m: MessageFull) {
   }
 }
 
+/**
+ * Visualização única: quem recebe abriu? Quem enviou vê "Aberta" quando todos os destinatários abriram.
+ * Nunca manda o endereço do arquivo nem a legenda na lista: só a rota "abrir" entrega, uma vez.
+ */
+function viewOnceOpened(m: MessageFull, viewerId: string) {
+  if (m.senderId === viewerId) return m.receipts.length > 0 && m.receipts.every((r) => r.openedAt);
+  return !!m.receipts.find((r) => r.userId === viewerId)?.openedAt;
+}
+
 export function serializeMessage(m: MessageFull, viewerId: string) {
   const deleted = m.deletedAt !== null;
+  const once = m.viewOnce && !deleted;
   return {
     id: m.id,
     conversationId: m.conversationId,
     senderId: m.senderId,
-    body: deleted ? '' : m.body,
+    body: deleted || once ? '' : m.body,
     deleted,
     createdAt: m.createdAt.toISOString(),
     editedAt: m.editedAt?.toISOString() ?? null,
     expiresAt: m.expiresAt?.toISOString() ?? null,
-    attachment: deleted ? null : buildAttachment(m),
+    attachment: deleted ? null : once ? (m.attachmentType ? { type: m.attachmentType, mime: m.attachmentMime } : null) : buildAttachment(m),
+    viewOnce: m.viewOnce || undefined,
+    opened: once ? viewOnceOpened(m, viewerId) : undefined,
     replyTo: m.replyTo
       ? {
           id: m.replyTo.id,
           senderId: m.replyTo.senderId,
           deleted: m.replyTo.deletedAt !== null,
-          body: m.replyTo.deletedAt ? '' : m.replyTo.body.slice(0, 200),
-          // Miniatura/ícone no card de resposta (foto, vídeo, áudio, figurinha...).
+          body: m.replyTo.deletedAt || m.replyTo.viewOnce ? '' : m.replyTo.body.slice(0, 200),
+          viewOnce: m.replyTo.viewOnce || undefined,
+          // Miniatura/ícone no card de resposta (foto, vídeo, áudio, figurinha...). Visualização única: só o ícone.
           attachment:
             m.replyTo.deletedAt || !m.replyTo.attachmentType
               ? null
-              : { type: m.replyTo.attachmentType, url: m.replyTo.attachmentUrl ?? undefined, name: m.replyTo.attachmentName ?? undefined, mime: m.replyTo.attachmentMime ?? undefined },
+              : m.replyTo.viewOnce
+                ? { type: m.replyTo.attachmentType }
+                : { type: m.replyTo.attachmentType, url: m.replyTo.attachmentUrl ?? undefined, name: m.replyTo.attachmentName ?? undefined, mime: m.replyTo.attachmentMime ?? undefined },
         }
       : null,
     // Só quem enviou vê o status de entrega/leitura.
@@ -288,9 +303,18 @@ async function sendMessageOnce(input: {
   clientId?: string;
   attachment?: AttachmentInput | null;
   forwarded?: boolean;
+  viewOnce?: boolean;
 }) {
   const memberIds = await getMemberIds(input.conversationId);
   if (!memberIds.includes(input.senderId)) throw new HttpError(404, 'Conversa não encontrada');
+  if (input.viewOnce) {
+    const a = input.attachment;
+    if (a?.kind !== 'media' || !['IMAGE', 'VIDEO', 'AUDIO'].includes(a.type) || input.forwarded) {
+      throw new HttpError(400, 'Visualização única é só para foto, vídeo ou áudio');
+    }
+    // Precisa de alguém do outro lado: não vale na conversa com você mesmo nem em grupo só seu.
+    if (memberIds.length < 2) throw new HttpError(400, 'Visualização única só em conversas com outras pessoas');
+  }
 
   const conversation = await prisma.conversation.findUnique({
     where: { id: input.conversationId },
@@ -323,6 +347,7 @@ async function sendMessageOnce(input: {
         body: input.body,
         replyToId,
         forwarded: !!input.forwarded,
+        viewOnce: !!input.viewOnce,
         ...attachmentFields,
         expiresAt: conversation?.disappearSeconds ? new Date(Date.now() + conversation.disappearSeconds * 1000) : null,
         receipts: {
@@ -405,11 +430,12 @@ export async function stopLiveLocation(userId: string, messageId: string) {
 export async function editMessage(userId: string, messageId: string, body: string) {
   const existing = await prisma.message.findUnique({
     where: { id: messageId },
-    select: { senderId: true, conversationId: true, deletedAt: true },
+    select: { senderId: true, conversationId: true, deletedAt: true, viewOnce: true },
   });
   if (!existing || existing.senderId !== userId || existing.deletedAt) {
     throw new HttpError(404, 'Mensagem não encontrada');
   }
+  if (existing.viewOnce) throw new HttpError(400, 'Não dá para editar uma mensagem de visualização única');
   await prisma.message.update({ where: { id: messageId }, data: { body, editedAt: new Date() } });
   const memberIds = await getMemberIds(existing.conversationId);
   const message = await broadcastMessage('message:updated', messageId, memberIds);
@@ -427,7 +453,7 @@ export async function isMaster(userId: string) {
 async function memberMessage(userId: string, messageId: string) {
   const m = await prisma.message.findUnique({
     where: { id: messageId },
-    select: { id: true, senderId: true, conversationId: true, createdAt: true, deletedAt: true, attachmentUrl: true, body: true, attachmentType: true },
+    select: { id: true, senderId: true, conversationId: true, createdAt: true, deletedAt: true, attachmentUrl: true, body: true, attachmentType: true, viewOnce: true },
   });
   if (!m) throw new HttpError(404, 'Mensagem não encontrada');
   await assertMember(m.conversationId, userId);
@@ -474,6 +500,57 @@ export async function deleteMessage(userId: string, messageId: string) {
   }
   const memberIds = await getMemberIds(existing.conversationId);
   await broadcastMessage('message:updated', messageId, memberIds);
+}
+
+/**
+ * Visualização única: entrega o arquivo (e a legenda) a quem recebeu, uma única vez. Abrir também conta como lida.
+ * Quando todos abrirem, o arquivo é apagado pela limpeza periódica (sweepOpenedViewOnce).
+ */
+export async function openViewOnce(userId: string, messageId: string) {
+  const m = await prisma.message.findUnique({
+    where: { id: messageId },
+    select: { conversationId: true, senderId: true, body: true, viewOnce: true, deletedAt: true, attachmentType: true, attachmentUrl: true, attachmentMime: true, attachmentName: true, attachmentSize: true },
+  });
+  if (!m || !m.viewOnce || m.deletedAt) throw new HttpError(404, 'Mensagem não encontrada');
+  await assertMember(m.conversationId, userId);
+  if (m.senderId === userId) throw new HttpError(403, 'Mensagens de visualização única não podem ser abertas por quem enviou');
+  const now = new Date();
+  // Só abre se ainda não foi aberta (updateMany com a condição evita abrir duas vezes em dois aparelhos).
+  const claimed = await prisma.messageReceipt.updateMany({
+    where: { messageId, userId, openedAt: null },
+    data: { openedAt: now },
+  });
+  if (!claimed.count || !m.attachmentUrl) throw new HttpError(410, 'Esta mídia já foi aberta');
+  await prisma.messageReceipt.updateMany({ where: { messageId, userId, deliveredAt: null }, data: { deliveredAt: now } });
+  await prisma.messageReceipt.updateMany({ where: { messageId, userId, readAt: null }, data: { readAt: now } });
+  await emitStatusUpdates([{ messageId, conversationId: m.conversationId, senderId: m.senderId }]);
+  // Os outros aparelhos desta pessoa passam a mostrar "Aberta"; quem enviou também, se todos já abriram.
+  await broadcastMessage('message:updated', messageId, await getMemberIds(m.conversationId));
+  return {
+    body: m.body,
+    attachment: { type: m.attachmentType, url: m.attachmentUrl, mime: m.attachmentMime, name: m.attachmentName, size: m.attachmentSize },
+  };
+}
+
+// Tempo para quem abriu terminar de ver/ouvir antes de o arquivo sumir do servidor.
+const VIEW_ONCE_GRACE_MS = 30 * 60_000;
+
+/** Visualização única que todos já abriram (há mais de 30 min): apaga o arquivo do disco e o endereço do banco. */
+export async function sweepOpenedViewOnce() {
+  const cutoff = new Date(Date.now() - VIEW_ONCE_GRACE_MS);
+  const rows = await prisma.message.findMany({
+    where: {
+      viewOnce: true,
+      attachmentUrl: { not: null },
+      receipts: { some: {}, none: { OR: [{ openedAt: null }, { openedAt: { gt: cutoff } }] } },
+    },
+    select: { id: true, attachmentUrl: true },
+    take: 500,
+  });
+  for (const row of rows) {
+    await prisma.message.update({ where: { id: row.id }, data: { attachmentUrl: null } });
+    await deleteAttachmentFile(row.attachmentUrl);
+  }
 }
 
 /** Favoritar (estrela) ou tirar dos favoritos. Só a própria pessoa vê. */
@@ -527,7 +604,9 @@ export async function pinMessage(userId: string, conversationId: string, message
     const m = await memberMessage(userId, messageId);
     if (m.conversationId !== conversationId || m.deletedAt) throw new HttpError(404, 'Mensagem não encontrada');
     const kind = m.attachmentType ? PIN_PREVIEW[m.attachmentType] : '';
-    data = { pinnedMessageId: m.id, pinnedPreview: (m.body || kind || 'Mensagem').slice(0, 140), pinnedSenderId: m.senderId };
+    // Visualização única: a legenda não pode aparecer na barra de fixada.
+    const preview = m.viewOnce ? `${kind || 'Mídia'} de visualização única` : m.body || kind || 'Mensagem';
+    data = { pinnedMessageId: m.id, pinnedPreview: preview.slice(0, 140), pinnedSenderId: m.senderId };
   } else {
     data = { pinnedMessageId: null, pinnedPreview: null, pinnedSenderId: null };
   }

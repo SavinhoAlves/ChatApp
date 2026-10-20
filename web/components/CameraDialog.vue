@@ -1,7 +1,38 @@
 <script setup lang="ts">
-import { Camera, Circle, RefreshCw, Square, Video, X } from '@lucide/vue';
+import { ArrowLeft, Camera, Circle, RefreshCw, Send, Square, Video, X } from '@lucide/vue';
 
-const emit = defineEmits<{ close: []; captured: [blob: Blob, kind: 'IMAGE' | 'VIDEO'] }>();
+// allowViewOnce: a conversa tem outra pessoa (a visualização única não vale na conversa com você mesmo).
+const props = defineProps<{ allowViewOnce?: boolean }>();
+const emit = defineEmits<{ close: []; captured: [blob: Blob, kind: 'IMAGE' | 'VIDEO', opts: { caption: string; viewOnce: boolean }] }>();
+
+// Depois de tirar a foto ou gravar o vídeo: prévia com legenda e visualização única antes de enviar.
+const shot = ref<{ blob: Blob; kind: 'IMAGE' | 'VIDEO'; url: string } | null>(null);
+const caption = ref('');
+const viewOnce = ref(false);
+
+function setShot(blob: Blob, kind: 'IMAGE' | 'VIDEO') {
+  stopStream();
+  shot.value = { blob, kind, url: URL.createObjectURL(blob) };
+}
+
+function retake() {
+  if (shot.value) URL.revokeObjectURL(shot.value.url);
+  shot.value = null;
+  caption.value = '';
+  viewOnce.value = false;
+  // Espera a tela da câmera voltar (o <video> é recriado) antes de ligar de novo.
+  void nextTick(openCamera);
+}
+
+function toggleViewOnce() {
+  viewOnce.value = !viewOnce.value;
+  navigator.vibrate?.(10);
+}
+
+function sendShot() {
+  if (!shot.value) return;
+  emit('captured', shot.value.blob, shot.value.kind, { caption: caption.value.trim(), viewOnce: props.allowViewOnce ? viewOnce.value : false });
+}
 
 const videoEl = ref<HTMLVideoElement | null>(null);
 const mode = ref<'photo' | 'video'>('photo');
@@ -45,6 +76,7 @@ onMounted(openCamera);
 onBeforeUnmount(() => {
   stopStream();
   clearInterval(recordingTimer);
+  if (shot.value) URL.revokeObjectURL(shot.value.url);
 });
 
 function capturePhoto() {
@@ -55,7 +87,7 @@ function capturePhoto() {
   canvas.height = video.videoHeight;
   canvas.getContext('2d')?.drawImage(video, 0, 0);
   canvas.toBlob((blob) => {
-    if (blob) emit('captured', blob, 'IMAGE');
+    if (blob) setShot(blob, 'IMAGE');
   }, 'image/jpeg', 0.95);
 }
 
@@ -82,7 +114,7 @@ function stopRecording() {
   recorder.addEventListener(
     'stop',
     () => {
-      if (recordedChunks.length) emit('captured', new Blob(recordedChunks, { type: recorder.mimeType || 'video/webm' }), 'VIDEO');
+      if (recordedChunks.length) setShot(new Blob(recordedChunks, { type: recorder.mimeType || 'video/webm' }), 'VIDEO');
     },
     { once: true },
   );
@@ -103,7 +135,48 @@ const recordingLabel = computed(() => {
 
 <template>
   <div class="overlay camera-overlay">
-    <div class="camera-dialog">
+    <div v-if="shot" class="camera-dialog camera-preview">
+      <img v-if="shot.kind === 'IMAGE'" :src="shot.url" class="camera-video" alt="Prévia da foto" />
+      <video v-else :src="shot.url" class="camera-video" autoplay loop playsinline controls />
+
+      <header class="camera-top">
+        <button class="icon-btn camera-icon-btn" type="button" aria-label="Tirar de novo" title="Tirar de novo" @click="retake">
+          <ArrowLeft :size="22" :stroke-width="2" />
+        </button>
+        <button class="icon-btn camera-icon-btn" type="button" aria-label="Fechar câmera" @click="emit('close')">
+          <X :size="22" :stroke-width="2" />
+        </button>
+      </header>
+
+      <footer class="camera-caption">
+        <input
+          v-model="caption"
+          class="camera-caption-input"
+          type="text"
+          maxlength="4000"
+          placeholder="Adicione uma legenda…"
+          aria-label="Legenda"
+          enterkeyhint="send"
+          @keydown.enter.prevent="sendShot"
+        />
+        <button
+          v-if="allowViewOnce"
+          class="icon-btn camera-icon-btn once-toggle"
+          :class="{ on: viewOnce }"
+          type="button"
+          :aria-pressed="viewOnce"
+          :title="viewOnce ? 'Visualização única ativada' : 'Visualização única'"
+          aria-label="Visualização única"
+          @click="toggleViewOnce"
+        >
+          <ViewOnceIcon :size="24" :on="viewOnce" />
+        </button>
+        <button class="send-btn" type="button" aria-label="Enviar" @click="sendShot"><Send :size="19" :stroke-width="2.2" /></button>
+      </footer>
+      <p v-if="viewOnce" class="camera-once-hint">{{ shot.kind === 'IMAGE' ? 'Foto' : 'Vídeo' }} de visualização única: só pode ser aberto uma vez.</p>
+    </div>
+
+    <div v-else class="camera-dialog">
       <video ref="videoEl" class="camera-video" autoplay playsinline muted />
 
       <div v-if="error" class="camera-error">{{ error }}</div>

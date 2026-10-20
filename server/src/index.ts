@@ -7,6 +7,7 @@ import Fastify from 'fastify';
 import { Redis } from 'ioredis';
 import { registerAuth } from './auth.js';
 import { appUpdateRoutes } from './routes/appUpdate.js';
+import { sweepOpenedViewOnce } from './services/chat.js';
 import { sweepExpiredMessages } from './services/conversationTools.js';
 import { sweepExpiredStatuses } from './services/status.js';
 import { config, MAX_UPLOAD_SIZE } from './config.js';
@@ -127,10 +128,12 @@ const io = await setupRealtime(app, redis);
 
 await app.listen({ host: config.host, port: config.port });
 
-// A cada minuto: mensagens temporárias vencidas somem para todos; status com mais de 24 h também.
+// A cada minuto: mensagens temporárias vencidas somem para todos; status com mais de 24 h também;
+// e o arquivo de visualização única que todos já abriram.
 setInterval(() => {
   sweepExpiredMessages().catch((error) => app.log.error(error, 'falha ao apagar mensagens temporárias'));
   sweepExpiredStatuses().catch((error) => app.log.error(error, 'falha ao apagar status vencidos'));
+  sweepOpenedViewOnce().catch((error) => app.log.error(error, 'falha ao apagar mídias de visualização única'));
 }, 60_000);
 
 async function shutdown(signal: string) {

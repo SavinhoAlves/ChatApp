@@ -125,6 +125,8 @@ model Message {
   expiresAt      DateTime?
   // "Encaminhada": reenviada de outra conversa.
   forwarded      Boolean   @default(false)
+  // Visualização única (foto, vídeo ou áudio): cada destinatário abre uma vez; o arquivo some depois que todos abrirem.
+  viewOnce       Boolean   @default(false)
 
   // Mídia opcional (imagem, vídeo, áudio ou arquivo). Uma mensagem pode ter só anexo, só texto, ou os dois.
   attachmentType AttachmentType?
@@ -188,6 +190,8 @@ model MessageReceipt {
   conversationId String
   deliveredAt    DateTime?
   readAt         DateTime?
+  // Visualização única: quando esta pessoa abriu a mídia.
+  openedAt       DateTime?
 
   message Message @relation(fields: [messageId], references: [id], onDelete: Cascade)
   user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)

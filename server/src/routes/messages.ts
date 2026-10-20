@@ -1,7 +1,7 @@
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 import { validate } from '../errors.js';
-import { deleteMessage, editMessage, hideMessage, messageInfo, setStar } from '../services/chat.js';
+import { deleteMessage, editMessage, hideMessage, messageInfo, openViewOnce, setStar } from '../services/chat.js';
 
 const idParam = z.object({ id: z.string().min(1) });
 const editSchema = z.object({ body: z.string().trim().min(1, 'Mensagem vazia').max(4000) });
@@ -35,6 +35,12 @@ export async function messageRoutes(app: FastifyInstance) {
     const { id } = validate(idParam, request.params);
     await setStar(request.user.sub, id, false);
     return { ok: true };
+  });
+
+  // Visualização única: entrega a mídia uma vez (a segunda tentativa recebe 410).
+  app.post('/messages/:id/open', auth, async (request) => {
+    const { id } = validate(idParam, request.params);
+    return openViewOnce(request.user.sub, id);
   });
 
   // "Dados": entregue e lida, com data e hora, por destinatário.

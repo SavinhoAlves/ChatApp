@@ -17,6 +17,8 @@ const theme = computed(() => (conv.value ? themeFor(conv.value.id) : null));
 
 // ---- Topo: área toda clicável abre os dados; ícones à direita ----
 const isSelfChat = computed(() => !!conv.value && chat.isSelfChat(conv.value));
+// Visualização única (foto, vídeo, áudio): só em conversa privada ou grupo com outras pessoas.
+const canViewOnce = computed(() => !!conv.value && chat.canViewOnce(conv.value));
 function openInfo() {
   if (isGroup.value) emit('info');
   else emit('contact-info');
@@ -242,6 +244,7 @@ const fileInput = ref<HTMLInputElement | null>(null);
 const pendingFile = ref<File | null>(null);
 const pendingPreview = ref<string | null>(null);
 const pendingIsVideo = ref(false);
+const pendingOnce = ref(false);
 const uploading = ref(false);
 
 const attachMenuOpen = ref(false);
@@ -288,7 +291,7 @@ function openContact() {
   showContact.value = true;
 }
 
-async function onCameraCaptured(blob: Blob, kind: 'IMAGE' | 'VIDEO') {
+async function onCameraCaptured(blob: Blob, kind: 'IMAGE' | 'VIDEO', opts: { caption: string; viewOnce: boolean }) {
   showCamera.value = false;
   const id = activeId.value;
   if (!id) return;
@@ -296,7 +299,7 @@ async function onCameraCaptured(blob: Blob, kind: 'IMAGE' | 'VIDEO') {
   try {
     const name = kind === 'IMAGE' ? `foto-${Date.now()}.jpg` : `video-${Date.now()}.webm`;
     const attachment = await upload(blob, name);
-    chat.send(id, '', null, attachment);
+    chat.send(id, opts.caption, null, attachment, { viewOnce: opts.viewOnce && canViewOnce.value });
     stick.value = true;
     scrollToBottom();
   } catch (e) {
@@ -449,6 +452,7 @@ function clearPendingFile() {
   pendingPreview.value = null;
   pendingFile.value = null;
   pendingIsVideo.value = false;
+  pendingOnce.value = false;
 }
 
 async function uploadPending(): Promise<Attachment | null> {
@@ -527,9 +531,13 @@ function onMicCancel() {
 
 // Áudios subindo por conversa: enquanto isso aparece o balão com o microfone flutuando.
 const sendingVoice = ref<Record<string, number>>({});
+// Gravação travada: botão de visualização única ao lado das ondas.
+const voiceOnce = ref(false);
 
 async function finishVoice(send: boolean) {
   const id = activeId.value;
+  const once = voiceOnce.value && canViewOnce.value;
+  voiceOnce.value = false;
   const audio = await voice.stop(send);
   if (!audio || !id) {
     if (send && !audio) flash('Áudio muito curto. Segure para gravar.');
@@ -540,7 +548,7 @@ async function finishVoice(send: boolean) {
   scrollToBottom();
   try {
     const attachment = await upload(audio.blob, `audio-${Date.now()}.${audio.ext}`);
-    chat.send(id, '', null, attachment);
+    chat.send(id, '', null, attachment, { viewOnce: once });
     stick.value = true;
     scrollToBottom();
   } catch (e) {
@@ -686,7 +694,8 @@ async function submit() {
     }
   }
 
-  chat.send(id, body, replyTo.value, attachment);
+  const once = pendingOnce.value && canViewOnce.value && (attachment?.type === 'IMAGE' || attachment?.type === 'VIDEO');
+  chat.send(id, body, replyTo.value, attachment, { viewOnce: once });
   chat.stopTyping(id);
   draft.value = '';
   drafts[id] = '';
@@ -944,23 +953,54 @@ const replyPreviewName = computed(() => (replyTo.value && conv.value ? chat.user
         <File v-else :size="22" :stroke-width="1.8" class="composer-bar-file-icon" />
         <div class="composer-bar-text">
           <strong>{{ pendingFile.name }}</strong>
-          <span>{{ formatBytes(pendingFile.size) }}</span>
+          <span>{{ pendingOnce ? `${pendingIsVideo ? 'Vídeo' : 'Foto'} de visualização única` : formatBytes(pendingFile.size) }}</span>
         </div>
+        <button
+          v-if="pendingPreview && canViewOnce"
+          class="icon-btn once-toggle"
+          :class="{ on: pendingOnce }"
+          type="button"
+          :aria-pressed="pendingOnce"
+          aria-label="Visualização única"
+          :title="pendingOnce ? 'Visualização única ativada' : 'Visualização única'"
+          :disabled="uploading"
+          @click="pendingOnce = !pendingOnce"
+        >
+          <ViewOnceIcon :size="22" :on="pendingOnce" />
+        </button>
         <button class="icon-btn" type="button" aria-label="Remover anexo" :disabled="uploading" @click="clearPendingFile">
           <X :size="18" :stroke-width="2" />
         </button>
       </div>
 
-      <div v-if="recording && voice.locked.value" class="composer-row recording-bar">
-        <button class="icon-btn" type="button" aria-label="Cancelar gravação" @click="stopRecording(false)">
-          <Trash2 :size="20" :stroke-width="2" />
-        </button>
-        <span class="rec-dot" aria-hidden="true" />
-        <span class="rec-time">{{ voice.label.value }}</span>
-        <span class="rec-wave" aria-hidden="true"><i v-for="(l, i) in voice.levels.value" :key="i" :style="{ height: `${Math.round(l * 100)}%` }" /></span>
-        <button class="send-btn" type="button" aria-label="Enviar áudio" @click="stopRecording(true)">
-          <Send :size="19" :stroke-width="2.2" />
-        </button>
+      <!-- Gravação travada: tempo e ondas, visualização única à direita; embaixo, apagar e enviar. -->
+      <div v-if="recording && voice.locked.value" class="recording-bar locked">
+        <div class="rec-top">
+          <span class="rec-dot" aria-hidden="true" />
+          <span class="rec-time">{{ voice.label.value }}</span>
+          <span class="rec-wave" aria-hidden="true"><i v-for="(l, i) in voice.levels.value" :key="i" :style="{ height: `${Math.round(l * 100)}%` }" /></span>
+          <button
+            v-if="canViewOnce"
+            class="icon-btn once-toggle"
+            :class="{ on: voiceOnce }"
+            type="button"
+            :aria-pressed="voiceOnce"
+            aria-label="Visualização única"
+            :title="voiceOnce ? 'Visualização única ativada' : 'Visualização única'"
+            @click="voiceOnce = !voiceOnce"
+          >
+            <ViewOnceIcon :size="22" :on="voiceOnce" />
+          </button>
+        </div>
+        <p v-if="voiceOnce" class="rec-once-hint">Áudio de visualização única: só pode ser ouvido uma vez.</p>
+        <div class="rec-actions">
+          <button class="icon-btn" type="button" aria-label="Cancelar gravação" title="Apagar" @click="stopRecording(false)">
+            <Trash2 :size="20" :stroke-width="2" />
+          </button>
+          <button class="send-btn" type="button" aria-label="Enviar áudio" @click="stopRecording(true)">
+            <Send :size="19" :stroke-width="2.2" />
+          </button>
+        </div>
       </div>
       <div v-else class="composer-row" :class="{ 'is-recording': recording }">
         <!-- Segurando o microfone: tempo, ondas e "deslize para cancelar" no lugar do campo. -->
@@ -1052,7 +1092,7 @@ const replyPreviewName = computed(() => (replyTo.value && conv.value ? chat.user
       </div>
     </footer>
 
-    <CameraDialog v-if="showCamera" @close="showCamera = false" @captured="onCameraCaptured" />
+    <CameraDialog v-if="showCamera" :allow-view-once="canViewOnce" @close="showCamera = false" @captured="onCameraCaptured" />
     <DeleteMessagesDialog v-if="deleting" :messages="deleting" @close="deleting = null" @done="onDeleted" />
     <SendToDialog v-if="forwarding" title="Encaminhar para…" @close="forwarding = null" @pick="onForward" />
     <MessageInfoDialog v-if="infoFor" :message="infoFor" @close="infoFor = null" />

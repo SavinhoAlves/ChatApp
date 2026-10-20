@@ -269,6 +269,8 @@ export async function conversationRoutes(app: FastifyInstance) {
       where: {
         conversationId: id,
         deletedAt: null,
+        // Legenda de visualização única não aparece na pesquisa.
+        viewOnce: false,
         body: { contains: q, mode: 'insensitive' },
         ...(membership.clearedAt ? { createdAt: { gt: membership.clearedAt } } : {}),
       },

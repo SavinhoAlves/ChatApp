@@ -46,7 +46,7 @@ const profileName = computed(() => {
 
 const media = computed(() =>
   (chat.messages.value[props.conversationId] ?? [])
-    .filter((m) => !m.deleted && (m.attachment?.type === 'IMAGE' || m.attachment?.type === 'VIDEO'))
+    .filter((m) => !m.deleted && !m.viewOnce && (m.attachment?.type === 'IMAGE' || m.attachment?.type === 'VIDEO'))
     .slice(-9)
     .reverse(),
 );

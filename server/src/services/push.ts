@@ -280,6 +280,7 @@ export async function pushNewMessage(messageId: string) {
       senderId: true,
       body: true,
       attachmentType: true,
+      viewOnce: true,
       sender: { select: { displayName: true } },
       conversation: { select: { type: true, title: true, participants: { select: { userId: true, mutedUntil: true } } } },
     },
@@ -292,7 +293,10 @@ export async function pushNewMessage(messageId: string) {
   if (!recipients.length) return;
 
   const kind = m.attachmentType ? PREVIEW[m.attachmentType] : undefined;
-  const text = clip(m.body ? (kind && kind !== PREVIEW.STICKER ? `${kind.split(' ')[0]} ${m.body}` : m.body) : (kind ?? 'Nova mensagem'));
+  // Visualização única: a legenda só aparece ao abrir, nunca na notificação.
+  const text = m.viewOnce
+    ? `${kind ?? 'Mídia'} de visualização única`
+    : clip(m.body ? (kind && kind !== PREVIEW.STICKER ? `${kind.split(' ')[0]} ${m.body}` : m.body) : (kind ?? 'Nova mensagem'));
   const names = await namesFor(recipients, m.senderId, m.sender.displayName);
   const group = m.conversation.type === 'GROUP';
 

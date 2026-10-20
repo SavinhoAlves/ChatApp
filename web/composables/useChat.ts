@@ -110,10 +110,20 @@ export function useChat() {
     STICKER: '💟 Figurinha',
   };
 
+  const VIEW_ONCE_LABELS: Record<string, string> = {
+    IMAGE: 'Foto de visualização única',
+    VIDEO: 'Vídeo de visualização única',
+    AUDIO: 'Áudio de visualização única',
+  };
+
   function previewText(conv: Conversation) {
     const last = conv.lastMessage;
     if (!last) return 'Nenhuma mensagem ainda';
     if (last.deleted) return 'Mensagem apagada';
+    if (last.viewOnce) {
+      const prefix = last.senderId !== me.value?.id && conv.type === 'GROUP' ? `${userName(conv, last.senderId).split(' ')[0]}: ` : '';
+      return prefix + (last.opened ? 'Aberta' : (VIEW_ONCE_LABELS[last.attachment?.type ?? ''] ?? 'Visualização única'));
+    }
     // Minha: sem "Você:" — o card mostra os ✓ antes do texto.
     const mine = last.senderId === me.value?.id;
     const prefix = mine ? '' : conv.type === 'GROUP' ? `${userName(conv, last.senderId).split(' ')[0]}: ` : '';
@@ -425,6 +435,7 @@ export function useChat() {
         clientId: temp.clientId,
         attachment: temp.attachment ? toWireAttachment(temp.attachment) : null,
         forwarded: temp.forwarded || undefined,
+        viewOnce: temp.viewOnce || undefined,
       },
       (err: Error | null, res?: { ok: boolean; message?: Message }) => {
         if (res && !res.ok) return fail(); // Recusada pelo servidor (bloqueado etc.): não adianta repetir.
@@ -446,7 +457,7 @@ export function useChat() {
     body: string,
     replyTo: Message | null = null,
     attachment: Attachment | null = null,
-    opts: { forwarded?: boolean } = {},
+    opts: { forwarded?: boolean; viewOnce?: boolean } = {},
   ) {
     if (!me.value) return;
     const clientId = newId();
@@ -464,13 +475,19 @@ export function useChat() {
         ? {
             id: replyTo.id,
             senderId: replyTo.senderId,
-            body: replyTo.body.slice(0, 200),
+            body: replyTo.viewOnce ? '' : replyTo.body.slice(0, 200),
             deleted: false,
-            attachment: replyTo.attachment ? { type: replyTo.attachment.type, url: replyTo.attachment.url, name: replyTo.attachment.name, mime: replyTo.attachment.mime } : null,
+            viewOnce: replyTo.viewOnce,
+            attachment: replyTo.attachment
+              ? replyTo.viewOnce
+                ? { type: replyTo.attachment.type }
+                : { type: replyTo.attachment.type, url: replyTo.attachment.url, name: replyTo.attachment.name, mime: replyTo.attachment.mime }
+              : null,
           }
         : null,
       status: 'pending',
       forwarded: !!opts.forwarded,
+      viewOnce: opts.viewOnce || undefined,
     };
     (messages.value[conversationId] ??= []).push(temp);
     const conv = findConversation(conversationId);
@@ -581,6 +598,21 @@ export function useChat() {
 
   function messageInfo(m: Message) {
     return api<MessageInfo>(`/messages/${m.id}/info`);
+  }
+
+  /** Visualização única: busca a mídia (só funciona uma vez) e já marca como aberta aqui. */
+  async function openViewOnce(m: Message) {
+    const res = await api<{ body: string; attachment: Attachment }>(`/messages/${m.id}/open`, { method: 'POST' });
+    const item = messages.value[m.conversationId]?.find((x) => x.id === m.id);
+    if (item) item.opened = true;
+    const conv = findConversation(m.conversationId);
+    if (conv?.lastMessage?.id === m.id) conv.lastMessage = { ...conv.lastMessage, opened: true };
+    return res;
+  }
+
+  /** Visualização única dá para usar aqui? Só com mais alguém na conversa (não na "você mesmo" nem em grupo só seu). */
+  function canViewOnce(conv: Conversation) {
+    return !isSelfChat(conv) && conv.participants.some((p) => p.userId !== me.value?.id);
   }
 
   /** Encaminhar: reenvia texto/anexo para cada conversa escolhida, marcado como "Encaminhada". */
@@ -906,6 +938,8 @@ export function useChat() {
     pinMessage,
     messageInfo,
     forward,
+    openViewOnce,
+    canViewOnce,
     closeConversation,
     loadOlder,
     markRead,

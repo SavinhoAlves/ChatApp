@@ -38,6 +38,7 @@ watchEffect((onCleanup) => {
 
 const label = computed(() => {
   if (props.reply.deleted) return 'Mensagem apagada';
+  if (props.reply.viewOnce) return `${att.value?.type === 'VIDEO' ? 'Vídeo' : att.value?.type === 'AUDIO' ? 'Áudio' : 'Foto'} de visualização única`;
   const body = props.reply.body;
   switch (att.value?.type) {
     case 'IMAGE':
