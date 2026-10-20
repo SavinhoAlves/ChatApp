@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ArrowLeft, Ban, Camera, Check, ChevronDown, ChevronUp, Copy, File, FileText, Images, Lock, MapPin, Mic, Phone, Pin, Plus, Search, Send, ShieldAlert, Smile, Sticker, Store, Timer, Trash2, Upload, UserPlus, UserRound, Video, X } from '@lucide/vue';
+import { ArrowLeft, Ban, Camera, Check, ChevronDown, ChevronUp, Copy, File, FileText, Images, Lock, MapPin, Mic, Pause, Phone, Pin, Plus, Search, Send, ShieldAlert, Smile, Sticker, Store, Timer, Trash2, Upload, UserPlus, UserRound, Video, X } from '@lucide/vue';
 import type { StickerRef } from '~/composables/useStickers';
 import type { Attachment, Message, User } from '~/types';
 import { formatPhone } from '~/utils/phone';
@@ -976,7 +976,7 @@ const replyPreviewName = computed(() => (replyTo.value && conv.value ? chat.user
       <!-- Gravação travada: tempo e ondas, visualização única à direita; embaixo, apagar e enviar. -->
       <div v-if="recording && voice.locked.value" class="recording-bar locked">
         <div class="rec-top">
-          <span class="rec-dot" aria-hidden="true" />
+          <span class="rec-dot" :class="{ paused: voice.paused.value }" aria-hidden="true" />
           <span class="rec-time">{{ voice.label.value }}</span>
           <span class="rec-wave" aria-hidden="true"><i v-for="(l, i) in voice.levels.value" :key="i" :style="{ height: `${Math.round(l * 100)}%` }" /></span>
           <button
@@ -996,6 +996,16 @@ const replyPreviewName = computed(() => (replyTo.value && conv.value ? chat.user
         <div class="rec-actions">
           <button class="icon-btn" type="button" aria-label="Cancelar gravação" title="Apagar" @click="stopRecording(false)">
             <Trash2 :size="20" :stroke-width="2" />
+          </button>
+          <button
+            class="icon-btn rec-pause"
+            type="button"
+            :aria-label="voice.paused.value ? 'Continuar gravando' : 'Pausar gravação'"
+            :title="voice.paused.value ? 'Continuar' : 'Pausar'"
+            @click="voice.togglePause()"
+          >
+            <Mic v-if="voice.paused.value" :size="20" :stroke-width="2" />
+            <Pause v-else :size="20" :stroke-width="2.2" fill="currentColor" />
           </button>
           <button class="send-btn" type="button" aria-label="Enviar áudio" @click="stopRecording(true)">
             <Send :size="19" :stroke-width="2.2" />

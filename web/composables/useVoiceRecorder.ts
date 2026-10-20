@@ -20,6 +20,8 @@ export function useVoiceRecorder() {
   /** Travada: continua gravando sem segurar o botão (arrastou para cima ou tocou rápido). */
   const locked = ref(false);
   const seconds = ref(0);
+  /** Pausada (gravação travada): o tempo e as ondas param até continuar. */
+  const paused = ref(false);
   /** Volume recente (0 a 1) para desenhar as ondas ao vivo. */
   const levels = ref<number[]>(Array(BAR_COUNT).fill(0.05));
 
@@ -30,6 +32,9 @@ export function useVoiceRecorder() {
   let audioCtx: AudioContext | null = null;
   let raf = 0;
   let startedAt = 0;
+  // Tempo já gravado antes da última pausa.
+  let accumulated = 0;
+  const elapsed = () => accumulated + (paused.value ? 0 : Date.now() - startedAt);
 
   function cleanup() {
     clearInterval(timer);
@@ -40,6 +45,7 @@ export function useVoiceRecorder() {
     audioCtx = null;
     recording.value = false;
     locked.value = false;
+    paused.value = false;
     levels.value = Array(BAR_COUNT).fill(0.05);
   }
 
@@ -53,7 +59,7 @@ export function useVoiceRecorder() {
       let last = 0;
       const tick = (now: number) => {
         raf = requestAnimationFrame(tick);
-        if (now - last < 80) return;
+        if (now - last < 80 || paused.value) return;
         last = now;
         analyser.getByteTimeDomainData(data);
         let peak = 0;
@@ -86,9 +92,11 @@ export function useVoiceRecorder() {
     };
     recorder.start(250);
     startedAt = Date.now();
+    accumulated = 0;
+    paused.value = false;
     seconds.value = 0;
     recording.value = true;
-    timer = setInterval(() => (seconds.value = Math.floor((Date.now() - startedAt) / 1000)), 250);
+    timer = setInterval(() => (seconds.value = Math.floor(elapsed() / 1000)), 250);
     meter(stream);
     return true;
   }
@@ -101,7 +109,8 @@ export function useVoiceRecorder() {
       cleanup();
       return Promise.resolve(null);
     }
-    const tooShort = Date.now() - startedAt < 600;
+    const tooShort = elapsed() < 600;
+    if (rec.state === 'paused') rec.resume();
     return new Promise((resolve) => {
       rec.addEventListener(
         'stop',
@@ -117,11 +126,25 @@ export function useVoiceRecorder() {
     });
   }
 
+  /** Pausar / continuar a gravação travada (como no WhatsApp). */
+  function togglePause() {
+    if (!recorder || !recording.value) return;
+    if (paused.value) {
+      recorder.resume();
+      startedAt = Date.now();
+      paused.value = false;
+    } else {
+      recorder.pause();
+      accumulated += Date.now() - startedAt;
+      paused.value = true;
+    }
+  }
+
   const label = computed(() => `${Math.floor(seconds.value / 60)}:${String(seconds.value % 60).padStart(2, '0')}`);
 
   onBeforeUnmount(() => {
     if (recording.value) void stop(false);
   });
 
-  return { recording, locked, seconds, levels, label, start, stop };
+  return { recording, locked, paused, seconds, levels, label, start, stop, togglePause };
 }

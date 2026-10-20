@@ -38,7 +38,9 @@ import { Pause, Play } from '@lucide/vue';
 // Player de mensagem de voz no estilo WhatsApp: play/pausa, ondas do próprio áudio (tocar nelas pula
 // para o ponto), tempo e velocidade 1×/1,5×/2×. Substitui o <audio controls> do sistema, que no
 // Android mostrava "Erro" com áudios WebM sem duração gravada.
-const props = defineProps<{ src: string; mine?: boolean }>();
+// autoplay: visualização única começa a tocar assim que abre; ended avisa quando terminou.
+const props = defineProps<{ src: string; mine?: boolean; autoplay?: boolean }>();
+const emit = defineEmits<{ ended: [] }>();
 
 const audio = ref<HTMLAudioElement | null>(null);
 const playing = ref(false);
@@ -49,6 +51,7 @@ const rate = ref(1);
 const failed = ref(false);
 
 onMounted(async () => {
+  if (props.autoplay) void toggle(true);
   const result = await analyze(props.src);
   if (result) {
     peaks.value = result.peaks;
@@ -61,7 +64,7 @@ function onMeta() {
   if (Number.isFinite(d) && d > 0) duration.value = d;
 }
 
-async function toggle() {
+async function toggle(auto = false) {
   const el = audio.value;
   if (!el) return;
   if (playing.value) {
@@ -75,7 +78,8 @@ async function toggle() {
     el.playbackRate = rate.value;
     await el.play();
   } catch {
-    failed.value = true;
+    // Tocar sozinho pode ser barrado pelo navegador: aí é só tocar no play.
+    if (!auto) failed.value = true;
   }
 }
 
@@ -99,7 +103,7 @@ const timeLabel = computed(() => fmt(playing.value || current.value ? current.va
 
 <template>
   <div class="voice" :class="{ mine, playing }" @click.stop>
-    <button class="voice-play" type="button" :aria-label="playing ? 'Pausar' : 'Ouvir'" @click="toggle">
+    <button class="voice-play" type="button" :aria-label="playing ? 'Pausar' : 'Ouvir'" @click="toggle()">
       <Pause v-if="playing" :size="18" :stroke-width="2.4" fill="currentColor" />
       <Play v-else :size="18" :stroke-width="2.4" fill="currentColor" />
     </button>
@@ -124,6 +128,7 @@ const timeLabel = computed(() => fmt(playing.value || current.value ? current.va
       @ended="
         playing = false;
         current = 0;
+        emit('ended');
       "
     />
   </div>

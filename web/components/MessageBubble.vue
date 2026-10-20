@@ -143,7 +143,15 @@ const canCopy = computed(() => !!props.message.body && !props.message.deleted &&
 const ONCE_LABEL: Record<string, string> = { IMAGE: 'Foto', VIDEO: 'Vídeo', AUDIO: 'Áudio' };
 const onceLabel = computed(() => (props.message.opened ? 'Aberta' : (ONCE_LABEL[props.message.attachment?.type ?? ''] ?? 'Mídia')));
 const canOpenOnce = computed(() => !props.mine && !props.message.opened && !props.selecting);
-const onceView = ref<{ type: 'IMAGE' | 'VIDEO' | 'AUDIO'; url: string; caption: string } | null>(null);
+const onceView = ref<{ type: 'IMAGE' | 'VIDEO'; url: string; caption: string } | null>(null);
+// Áudio de visualização única toca na própria bolha (como no WhatsApp); quando termina, vira "Aberta".
+const onceAudio = ref<string | null>(null);
+const onceSender = computed(() => {
+  const conv = chat.activeConversation.value;
+  return conv ? chat.userName(conv, props.message.senderId) : (props.senderName ?? '');
+});
+// Ondas "de mentira" do áudio fechado (o arquivo só chega ao abrir).
+const ONCE_BARS = Array.from({ length: 28 }, (_, i) => 0.25 + 0.6 * Math.abs(Math.sin(i * 1.7) * Math.cos(i * 0.6)));
 const onceBusy = ref(false);
 const onceError = ref('');
 async function openOnce() {
@@ -152,7 +160,8 @@ async function openOnce() {
   onceError.value = '';
   try {
     const res = await chat.openViewOnce(props.message);
-    onceView.value = { type: res.attachment.type as 'IMAGE' | 'VIDEO' | 'AUDIO', url: res.attachment.url!, caption: res.body };
+    if (res.attachment.type === 'AUDIO') onceAudio.value = res.attachment.url!;
+    else onceView.value = { type: res.attachment.type as 'IMAGE' | 'VIDEO', url: res.attachment.url!, caption: res.body };
   } catch (e) {
     onceError.value = (e as Error).message;
   } finally {
@@ -319,8 +328,28 @@ function onTouchend() {
 
       <p v-if="message.deleted" class="bubble-body muted-text"><Ban :size="14" :stroke-width="2" /> Mensagem apagada</p>
       <template v-else>
+        <template v-if="message.viewOnce">
+        <div v-if="onceAudio" class="bubble-once-playing">
+          <VoicePlayer :src="onceAudio" :mine="mine" autoplay @ended="onceAudio = null" />
+          <span class="once-badge" title="Visualização única"><ViewOnceIcon :size="16" :on="true" /></span>
+        </div>
         <button
-          v-if="message.viewOnce"
+          v-else-if="message.attachment?.type === 'AUDIO' && !message.opened"
+          class="bubble-once-voice"
+          :class="{ openable: canOpenOnce }"
+          type="button"
+          :disabled="!canOpenOnce || onceBusy"
+          :aria-label="canOpenOnce ? 'Ouvir áudio de visualização única' : 'Áudio de visualização única'"
+          @click.stop="openOnce"
+        >
+          <span class="voice-play once-play"><ViewOnceIcon :size="22" :on="true" /></span>
+          <span class="once-voice-body">
+            <span class="voice-wave" aria-hidden="true"><i v-for="(h, i) in ONCE_BARS" :key="i" :style="{ height: `${Math.round(h * 100)}%` }" /></span>
+            <small>{{ onceBusy ? 'Abrindo…' : 'Visualização única' }}</small>
+          </span>
+        </button>
+        <button
+          v-else
           class="bubble-once"
           :class="{ opened: message.opened, openable: canOpenOnce }"
           type="button"
@@ -331,6 +360,7 @@ function onTouchend() {
           <ViewOnceIcon :size="24" :on="!message.opened" />
           <span>{{ onceBusy ? 'Abrindo…' : onceLabel }}</span>
         </button>
+        </template>
         <img
           v-else-if="message.attachment?.type === 'STICKER'"
           :src="message.attachment.url"
@@ -445,7 +475,15 @@ function onTouchend() {
       <RotateCw :size="12" :stroke-width="2" /> Falha ao enviar · tocar para tentar de novo
     </button>
 
-    <ViewOnceViewer v-if="onceView" :type="onceView.type" :url="onceView.url" :caption="onceView.caption" @close="onceView = null" />
+    <ViewOnceViewer
+      v-if="onceView"
+      :type="onceView.type"
+      :url="onceView.url"
+      :caption="onceView.caption"
+      :sender-name="onceSender"
+      :created-at="message.createdAt"
+      @close="onceView = null"
+    />
 
     <div v-if="lightbox && message.attachment" class="overlay lightbox" @click="lightbox = false">
       <img :src="message.attachment.url" alt="Imagem enviada" />

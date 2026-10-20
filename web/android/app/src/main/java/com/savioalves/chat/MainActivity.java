@@ -13,6 +13,8 @@ public class MainActivity extends BridgeActivity {
         registerPlugin(PhoneHintPlugin.class);
         // Plugin próprio: atualização do APK baixada do servidor.
         registerPlugin(AppUpdatePlugin.class);
+        // Plugin próprio: bloqueia print enquanto uma mídia de visualização única está aberta.
+        registerPlugin(SecureScreenPlugin.class);
         super.onCreate(savedInstanceState);
     }
 

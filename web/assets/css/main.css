@@ -6586,14 +6586,13 @@ select {
   font-size: 12px;
 }
 
-/* Tela cheia ao abrir. */
+/* Tela cheia ao abrir (como no WhatsApp): quem enviou e quando no topo, legenda embaixo. */
 .once-viewer {
   z-index: 80;
   display: flex;
   flex-direction: column;
   align-items: stretch;
-  gap: 10px;
-  padding: 0 0 max(16px, env(safe-area-inset-bottom));
+  padding: 0;
   background: #000;
   backdrop-filter: none;
   color: #fff;
@@ -6606,14 +6605,33 @@ select {
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: max(12px, var(--sat)) 12px 0;
+  padding: max(10px, var(--sat)) 12px 10px;
+  background: linear-gradient(to bottom, rgb(0 0 0 / 0.6), transparent);
 }
 
-.once-viewer-title {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  font-weight: 600;
+.once-viewer-who {
+  flex: 1;
+  min-width: 0;
+  display: grid;
+  line-height: 1.25;
+}
+
+.once-viewer-who strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 16px;
+}
+
+.once-viewer-who small {
+  color: rgb(255 255 255 / 0.7);
+  font-size: 12.5px;
+}
+
+.once-viewer-badge {
+  display: grid;
+  color: var(--accent);
+  --once-ink: #000;
 }
 
 .once-viewer-media {
@@ -6621,7 +6639,6 @@ select {
   min-height: 0;
   display: grid;
   place-items: center;
-  padding: 0 8px;
 }
 
 .once-viewer-media img,
@@ -6629,22 +6646,23 @@ select {
   max-width: 100%;
   max-height: 100%;
   object-fit: contain;
-  pointer-events: auto;
 }
 
 .once-viewer-media img {
   pointer-events: none;
 }
 
-.once-viewer-voice {
-  width: min(360px, 100%);
-  padding: 12px 14px;
-  border-radius: 16px;
-  background: rgb(255 255 255 / 0.08);
+.once-viewer-foot {
+  display: grid;
+  gap: 8px;
+  padding: 12px 16px max(16px, env(safe-area-inset-bottom));
+  background: linear-gradient(to top, rgb(0 0 0 / 0.7), transparent);
 }
 
 .once-viewer-caption {
-  margin: 0 16px;
+  margin: 0;
+  max-height: 30vh;
+  overflow-y: auto;
   white-space: pre-wrap;
   overflow-wrap: anywhere;
   text-align: center;
@@ -6652,10 +6670,84 @@ select {
 }
 
 .once-viewer-hint {
-  margin: 0 16px;
-  text-align: center;
-  color: rgb(255 255 255 / 0.6);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  margin: 0;
+  color: rgb(255 255 255 / 0.65);
   font-size: 12.5px;
+}
+
+/* Áudio de visualização única: mensagem de voz com o "1" no lugar do play. */
+.bubble-once-voice {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: min(260px, 62vw);
+  padding: 4px 4px 2px;
+  border: 0;
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+}
+
+.bubble-once-voice.openable {
+  cursor: pointer;
+}
+
+.bubble-once-voice:disabled {
+  cursor: default;
+  opacity: 1;
+}
+
+.bubble-once-voice .once-play {
+  flex: none;
+  color: var(--accent);
+}
+
+.msg-row.mine .bubble-once-voice .once-play {
+  color: var(--text);
+  --once-ink: rgb(var(--mine-rgb, var(--accent-rgb)));
+}
+
+.once-voice-body {
+  flex: 1;
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+}
+
+.once-voice-body .voice-wave {
+  cursor: inherit;
+}
+
+.once-voice-body small {
+  color: var(--muted);
+  font-size: 11.5px;
+}
+
+.bubble-once-playing {
+  position: relative;
+}
+
+.once-badge {
+  position: absolute;
+  top: 2px;
+  left: 30px;
+  display: grid;
+  color: var(--accent);
+  pointer-events: none;
+}
+
+.rec-dot.paused {
+  animation: none;
+  opacity: 0.35;
+}
+
+.recording-bar.locked .rec-pause {
+  color: var(--danger);
 }
 
 /* Prévia da câmera: legenda, visualização única e enviar. */
